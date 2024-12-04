@@ -1,0 +1,246 @@
+COMPILE;
+DIRECTORY MASTER;
+/**************************************************************************
+macros
+28/9/88
+
+This block contains useful macros missing from the Qudos library
+
+*************************************************************************/
+
+
+/* non-inverting tri-state driver, active high enable */
+
+MODULE ZBUF1;
+
+INPUTS	OUT,IN,EN;
+OUTPUTS	OUT;
+LEVEL FUNCTION;
+DEFINE
+
+DRIVE_(OUT) = BTS4A(IN,EN);
+
+END MODULE;
+
+/* two to one multiplexer */
+
+MODULE MUX2;
+
+INPUTS	IN1,SEL1,IN2,SEL2;
+OUTPUTS	OUT;
+LEVEL FUNCTION;
+DEFINE
+
+I1_(I1) = ND2A(IN1,SEL1);
+I2_(I2) = ND2A(IN2,SEL2);
+OUT_(OUT) = ND2A(I1,I2);
+
+END MODULE;
+
+/* One bit full adder */
+
+MODULE FULLADD;
+
+INPUTS	A,B,CI;
+OUTPUTS	Q,CO;
+LEVEL FUNCTION;
+DEFINE
+
+AABGEN_(AABL) = ND2A(A,B);
+AOBGEN_(AOBL) = NR2A(A,B);
+AABINV_(AAB) = N1A(AABL);
+QTGEN_(QT) = NR2A(AAB,AOBL);
+QTCIINV_(QTL,CIL) = MACINV2(QT,CI);
+QGEN_(Q) = AO2A(QT,CI,QTL,CIL);
+COTGEN_(COT) = NR2C(CI,AAB);
+COGEN_(CO) = NR2C(COT,AOBL);
+
+END MODULE;
+
+/* Half adder */
+
+MODULE HALFADD;
+
+INPUTS	A,B;
+OUTPUTS	Q,CO;
+LEVEL FUNCTION;
+DEFINE
+
+Q_(Q) = EOA(A,B);
+CO_(CO) = AND2A(A,B);
+
+END MODULE;
+
+/* Four stage full adder */
+
+MODULE FULLADD4;
+
+INPUTS	A_0,A_1,A_2,A_3,B_0,B_1,B_2,B_3,CI;
+OUTPUTS	Q_0,Q_1,Q_2,Q_3,CO;
+LEVEL FUNCTION;
+DEFINE
+
+AABGEN_0_(AABL_0) = ND2B(A_0,B_0);
+AABGEN_1_(AABL_1) = ND2B(A_1,B_1);
+AABGEN_2_(AABL_2) = ND2B(A_2,B_2);
+AABGEN_3_(AABL_3) = ND2B(A_3,B_3);
+AOBGEN_0_(AOBL_0) = NR2B(A_0,B_0);
+AOBGEN_1_(AOBL_1) = NR2B(A_1,B_1);
+AOBGEN_2_(AOBL_2) = NR2B(A_2,B_2);
+AOBGEN_3_(AOBL_3) = NR2B(A_3,B_3);
+AABINV_0_(AAB_1) = N1A(AABL_1);
+AOBINV_0_(AOB_0,AOB_1) = MACINV2(AOBL_0,AOBL_1);
+AOBINV_2_(AOB_2,AOB_3) = MACINV2(AOBL_2,AOBL_3);
+
+Q0T_0_(Q0T_0) = ND2A(AABL_0,AOB_0);
+Q0T_1_(CIL,Q0T_1) = MACINV2(CI,Q0T_0);
+Q_0_(Q_0) = AO2A(CI,Q0T_1,CIL,Q0T_0);
+
+Q1T_0_(Q1T_0) = NR2A(AAB_1,AOBL_1);
+Q1T_1_(Q1T_1,Q1T_4) = MACINV2(Q1T_0,Q1T_3);
+Q1T_2_(Q1T_2) = ND2A(AABL_0,CIL);
+Q1T_3_(Q1T_3) = ND2A(AOB_0,Q1T_2);
+Q_1_(Q_1) = AO2A(Q1T_0,Q1T_4,Q1T_1,Q1T_3);
+
+Q2T_0_(Q2T_0) = ND2A(AABL_2,AOB_2);
+Q2T_1_(Q2T_1) = ND3A(AABL_1,AABL_0,CIL);
+Q2T_2_(Q2T_2) = ND2A(AOBL_0,AABL_1);
+Q2T_3_(Q2T_3) = ND3A(AOB_1,Q2T_1,Q2T_2);
+Q2T_4_(Q2T_4,Q2T_5) = MACINV2(Q2T_3,Q2T_0);
+Q_2_(Q_2) = AO2A(Q2T_3,Q2T_0,Q2T_4,Q2T_5);
+
+Q3T_0_(Q3T_0) = ND2A(AABL_3,AOB_3);
+Q3T_1_(Q3T_1) = ND4A(AABL_2,AABL_1,AABL_0,CIL);
+Q3T_2_(Q3T_2) = ND3A(AABL_2,AABL_1,AOBL_0);
+Q3T_3_(Q3T_3) = ND2A(AABL_2,AOBL_1);
+Q3T_4_(Q3T_4) = ND4A(AOB_2,Q3T_1,Q3T_2,Q3T_3);
+Q3T_5_(Q3T_5,Q3T_6) = MACINV2(Q3T_0,Q3T_4);
+Q_3_(Q_3) = AO2A(Q3T_0,Q3T_4,Q3T_5,Q3T_6);
+
+COT_0_(COT_0) = ND5B(AABL_3,AABL_2,AABL_1,AABL_0,CIL);
+COT_1_(COT_1) = ND4A(AABL_3,AABL_2,AABL_1,AOBL_0);
+COT_2_(COT_2) = ND3A(AABL_3,AABL_2,AOBL_1);
+COT_3_(COT_3) = ND2A(AABL_3,AOBL_2);
+CO_(CO) = AND5B(COT_0,COT_1,COT_2,COT_3,AOB_3);
+
+END MODULE;
+
+/* Four stage full adder with no carry output */
+
+MODULE FULLADD4NC;
+
+INPUTS	A_0,A_1,A_2,A_3,B_0,B_1,B_2,B_3,CI;
+OUTPUTS	Q_0,Q_1,Q_2,Q_3;
+LEVEL FUNCTION;
+DEFINE
+
+AABGEN_0_(AABL_0) = ND2A(A_0,B_0);
+AABGEN_1_(AABL_1) = ND2A(A_1,B_1);
+AABGEN_2_(AABL_2) = ND2A(A_2,B_2);
+AABGEN_3_(AABL_3) = ND2A(A_3,B_3);
+AOBGEN_0_(AOBL_0) = NR2A(A_0,B_0);
+AOBGEN_1_(AOBL_1) = NR2A(A_1,B_1);
+AOBGEN_2_(AOBL_2) = NR2A(A_2,B_2);
+AOBGEN_3_(AOBL_3) = NR2A(A_3,B_3);
+AABINV_0_(AAB_1) = N1A(AABL_1);
+AOBINV_0_(AOB_0,AOB_1) = MACINV2(AOBL_0,AOBL_1);
+AOBINV_2_(AOB_2,AOB_3) = MACINV2(AOBL_2,AOBL_3);
+
+Q0T_0_(Q0T_0) = ND2A(AABL_0,AOB_0);
+Q0T_1_(CIL,Q0T_1) = MACINV2(CI,Q0T_0);
+Q_0_(Q_0) = AO2A(CI,Q0T_1,CIL,Q0T_0);
+
+Q1T_0_(Q1T_0) = NR2A(AAB_1,AOBL_1);
+Q1T_1_(Q1T_1,Q1T_4) = MACINV2(Q1T_0,Q1T_3);
+Q1T_2_(Q1T_2) = ND2A(AABL_0,CIL);
+Q1T_3_(Q1T_3) = ND2A(AOB_0,Q1T_2);
+Q_1_(Q_1) = AO2A(Q1T_0,Q1T_4,Q1T_1,Q1T_3);
+
+Q2T_0_(Q2T_0) = ND2A(AABL_2,AOB_2);
+Q2T_1_(Q2T_1) = ND3A(AABL_1,AABL_0,CIL);
+Q2T_2_(Q2T_2) = ND2A(AOBL_0,AABL_1);
+Q2T_3_(Q2T_3) = ND3A(AOB_1,Q2T_1,Q2T_2);
+Q2T_4_(Q2T_4,Q2T_5) = MACINV2(Q2T_3,Q2T_0);
+Q_2_(Q_2) = AO2A(Q2T_3,Q2T_0,Q2T_4,Q2T_5);
+
+Q3T_0_(Q3T_0) = ND2A(AABL_3,AOB_3);
+Q3T_1_(Q3T_1) = ND4A(AABL_2,AABL_1,AABL_0,CIL);
+Q3T_2_(Q3T_2) = ND3A(AABL_2,AABL_1,AOBL_0);
+Q3T_3_(Q3T_3) = ND2A(AABL_2,AOBL_1);
+Q3T_4_(Q3T_4) = ND4A(AOB_2,Q3T_1,Q3T_2,Q3T_3);
+Q3T_5_(Q3T_5,Q3T_6) = MACINV2(Q3T_0,Q3T_4);
+Q_3_(Q_3) = AO2A(Q3T_0,Q3T_4,Q3T_5,Q3T_6);
+
+END MODULE;
+
+/* Define a loadable synchronous counter element for a down counter
+        Qold    Cin  |  Qnew    Cout
+        -------------+--------------
+        0       0    |  1       0
+        0       1    |  0       1
+        1       0    |  0       1
+        1       1    |  1       1
+ 
+ */
+
+MODULE LSCNTEL;
+
+INPUTS	D,LD,LDL,CLK,CI,RSTL;
+OUTPUTS	Q,QL,CO;
+LEVEL FUNCTION;
+DEFINE
+
+CO_(CO) = OR2A(CI,Q);
+QNT_0_(QNT_0) = ENA(CI,Q);
+QNT_1_(QNT_1) = MUX2(LDL,QNT_0,LD,D);
+QFF_(Q,QL) = FD2A(QNT_1,CLK,RSTL);
+
+END MODULE;
+
+/* Ben's macros */
+MODULE TPLATCH1;
+
+INPUTS	D,EB;
+OUTPUTS	Q;
+LEVEL FUNCTION;
+DEFINE
+ONE (Q,QL) = LD1A (D,EB);
+END MODULE;
+
+/************************************
+Macro blocks for test logic in SS.NET
+************************************/
+
+/* Non-inverting 2 to 1 multiplexer with select inverter built in,
+and inversion of input 2 */
+
+MODULE TMUX1;
+
+INPUTS	IN1,IN2,SEL;
+OUTPUTS	OUT;
+LEVEL FUNCTION;
+DEFINE
+
+IN2L_(IN2L) = N1A (IN2);
+SEL_(OUTL) = MX21LA (IN1,IN2L,SEL);
+OUT_(OUT) = N1B (OUTL);
+
+END MODULE;
+
+/* Inverting 2 to 1 multiplexer with select inverter built in,
+and inversion of input 2 */
+
+MODULE TMUX2;
+
+INPUTS	IN1,IN2,SEL;
+OUTPUTS	OUT;
+LEVEL FUNCTION;
+DEFINE
+
+IN2L_(IN2L) = N1A (IN2);
+SEL_(OUT) = MX21LB (IN1,IN2L,SEL);
+
+END MODULE;
+
+END COMPILE;
+END;

@@ -1,0 +1,57 @@
+(***************************************************************************
+addr
+15/10/88
+
+The blitter address generator
+
+This section contains the address registers and the address updating
+arithmetic logic.
+
+**************************************************************************)
+
+IMPORT srcareg, dstareg, pcareg, addradd, addbsel, stepreg, addamux, addrout;
+
+DEF ADDR (addbackL, addbldL, adstp, busoe, srcenf, dstrdL[0..2], id[0..7], 
+	lddaL[0..2], ldsaL[0..2], ldstpL, ldmodL, lindr, pcen, pcwrL[0..2], 
+	res[0..1], run, sdasel, srcrd, srcrdL[0..2], upddstL, updpcL, 
+	updsrcL, upsldL :IN;
+	borrow, dam1L, dstcmp, sam1L, srccmp :IO;
+	a[0..19], d[0..7] :TRI);
+
+adda[0..19], addam1, addb[0..8], addbm1, addq[0..19], addqm1, 
+carryin[0..1], carryout, cinh6, cinh7, cinh15, daL[0..19], dsign, 
+dwrap, hisign, pcL[0..19], saL[0..19], ssign, step[0..7], stepm1, 
+swrap, vhisign, yfrac :IO;
+ 
+BEGIN
+ 
+Dstareg		:= DSTAREG (addq[0..19], addqm1, dstrdL[0..2], id[0..7], 
+			lddaL[0..2], sdasel, upddstL, daL[0..19], dam1L, 
+			dstcmp, dsign, dwrap, d[0..7]);
+ 
+Srcareg		:= SRCAREG (addbackL, addbldL, addq[0..19], addqm1, id[0..7], 
+			ldsaL[0..2], sdasel, srcrdL[0..2], upsldL, 
+			saL[0..19], sam1L, srccmp, ssign, swrap, d[0..7]);
+
+Pcareg		:= PCAREG (addq[0..19], id[0..7], pcwrL[0..2], run, updpcL,
+        		pcL[0..19]);
+ 
+Addamux		:= ADDAMUX (saL[0..19], daL[0..19], pcL[0..19], updsrcL, 
+			updpcL, sam1L, dam1L, addam1, adda[0..19]);
+ 
+Stepreg		:= STEPREG(id[0..7], ldmodL, ldstpL, step[0..7], 
+			stepm1, yfrac);
+ 
+Addbsel		:= ADDBSEL (adstp, carryout, srcenf, dsign, dwrap, lindr, 
+			res[0..1], step[0..7], stepm1, ssign, swrap, 
+			updpcL, updsrcL, yfrac, addbm1, addb[0..8], borrow, 
+			carryin[0..1], cinh6, cinh7, cinh15, hisign, vhisign);
+
+Addradd         := ADDRADD (addam1, adda[0..19], addbm1, addb[0..8], 
+			carryin[0..1], cinh6, cinh7, cinh15, hisign, 
+			vhisign, addqm1, addq[0..19], carryout);
+ 
+Addrout		:= ADDROUT (saL[0..19], daL[0..19], pcL[0..19], pcen, srcrd, 
+			busoe, a[0..19]);
+
+END

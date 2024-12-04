@@ -1,0 +1,116 @@
+COMPILE;
+DIRECTORY MASTER;
+/********************************************************
+*	int-hdl						*
+*	25/10/88					*
+********************************************************/
+
+/*
+This module is the interupt manager in the SLIPSTREAM chip on the ACW
+*/
+
+
+
+MODULE INT;
+
+INPUTS	D_0,D_1,D_2,D_3,D_4,D_5,D_6,D_7,RESETL_0,CLK,VINT,AIL_0,AIL_1,AIL_2,
+   INTAL,ACK,WD_0,WD_1,WD_2,WD_3,DIS;
+OUTPUTS	D_0,D_1,D_2,D_3,D_4,D_5,D_6,D_7,INTL;
+LEVEL FUNCTION;
+DEFINE
+
+/* latch the disable bits */
+
+DIS_0_(DIS_0,DISL_0) = LD1A(WD_0,DIS);
+DIS_1_(DIS_1,DISL_1) = LD1A(WD_1,DIS);
+DIS_2_(DIS_2,DISL_2) = LD1A(WD_2,DIS);
+DIS_3_(DIS_3,DISL_3) = LD1A(WD_3,DIS);
+
+
+/* sample the analogue inputs */
+
+AI1_0_(AI1L_0,AI1_0) = FD2A(AIL_0,CLK,RESL);
+AI1_1_(AI1L_1,AI1_1) = FD2A(AIL_1,CLK,RESL);
+AI1_2_(AI1L_2,AI1_2) = FD2A(AIL_2,CLK,RESL);
+AI2_0_(AI2_0,AI2L_0) = FD2A(AI1_0,CLK,RESL);
+AI2_1_(AI2_1,AI2L_1) = FD2A(AI1_1,CLK,RESL);
+AI2_2_(AI2_2,AI2L_2) = FD2A(AI1_2,CLK,RESL);
+
+/* generate a pulse off the leading edge (negative going at pin) */
+
+AID_0_(AID_0) = NR3A(DIS_1,AI1_0,AI2L_0);
+AID_1_(AID_1) = NR3A(DIS_2,AI1_1,AI2L_1);
+AID_2_(AID_2) = NR3A(DIS_3,AI1_2,AI2L_2);
+
+/* latch the interupts */
+
+RES_(RES) = N1A(RESETL_0);
+RESL_(RESL) = N1A(RES);
+
+J_(J) = AND2A(VINT,DISL_0);
+I_0_(I_0,IL_0) = JK(J,ACK_0,RES,CLK);
+I_1_(I_1,IL_1) = JK(AID_0,ACK_1,RES,CLK);
+I_2_(I_2,IL_2) = JK(AID_1,ACK_2,RES,CLK);
+I_3_(I_3,IL_3) = JK(AID_2,ACK_3,RES,CLK);
+
+/* latch this using INTAL so that the interupt vector does
+not change during the acknowledge cycle */
+
+INTA_(INTA) = N1A(INTAL);
+INTA1L_(INTA1L) = N1A(INTA);
+I1_0_(I1_0,I1L_0) = LD1A(I_0,INTA1L);
+I1_1_(I1_1,I1L_1) = LD1A(I_1,INTA1L);
+I1_2_(I1_2,I1L_2) = LD1A(I_2,INTA1L);
+I1_3_(I1_3,I1L_3) = LD1A(I_3,INTA1L);
+
+/* latch this with INTA so that the appropriate interupt is cleared
+by the OUT (ACK),AL instruction nb. the INTA cannot be used to clear
+the interupt because there are two INTA pulses per acknowledge */
+
+I2_0_(I2_0,I2L_0) = LD1A(I1_0,INTA);
+I2_1_(I2_1,I2L_1) = LD1A(I1_1,INTA);
+I2_2_(I2_2,I2L_2) = LD1A(I1_2,INTA);
+I2_3_(I2_3,I2L_3) = LD1A(I1_3,INTA);
+
+/* Now prioritize the interupts..interupt with a lower index disable
+those with a higher */
+
+IP_0_(IP_0) = B3A(I2_0);
+IP_1_(IP_1) = NR2A(I2L_1,I2_0);
+MASK_1_(MASK_1) = OR2A(I2_0,I2_1);
+IP_2_(IP_2) = NR2A(I2L_2,MASK_1);
+IP_3_(IP_3) = NR2A(I2L_3,MASK_2);
+MASK_2_(MASK_2) = OR2A(MASK_1,I2_2);
+
+/* produce a vector from this */
+
+VL_0_(VL_0) = NR2A(IP_0,IP_2);
+VL_1_(VL_1) = NR2A(IP_1,IP_2);
+VL_2_(VL_2) = N1A(IP_3);
+
+/* the interupt signal */
+
+INTL_(INTL) = NR4A(I_0,I_1,I_2,I_3);
+
+/* enable onto bus during INTA */
+
+D_0_(D_0) = MACZINVB1(VL_0,INTAL);
+D_1_(D_1) = MACZINVB1(VL_1,INTAL);
+D_2_(D_2) = MACZINVB1(VL_2,INTAL);
+D_3_(D_3) = MACZINVB1(RESETL_0,INTAL);
+D_4_(D_4) = MACZINVB1(RESETL_0,INTAL);
+D_5_(D_5) = MACZINVB1(RES,INTAL);
+D_6_(D_6) = MACZINVB1(RESETL_0,INTAL);
+D_7_(D_7) = MACZINVB1(RESETL_0,INTAL);
+
+/* clear the appropriate interupt */
+
+ACK_0_(ACK_0) = AND2A(ACK,IP_0);
+ACK_1_(ACK_1) = AND2A(ACK,IP_1);
+ACK_2_(ACK_2) = AND2A(ACK,IP_2);
+ACK_3_(ACK_3) = AND2A(ACK,IP_3);
+
+
+END MODULE;
+END COMPILE;
+END;

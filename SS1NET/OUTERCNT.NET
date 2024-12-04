@@ -1,0 +1,105 @@
+COMPILE;
+DIRECTORY MASTER;
+/****************************************************************************
+outercnt
+15/10/88
+
+Outer counter
+
+This is a synchronous down counter, loaded as part fo the blitter program.
+
+****************************************************************************/
+
+
+MODULE OUTERCNT;
+
+INPUTS	D_0,D_1,D_2,D_3,D_4,D_5,D_6,D_7,CCLK,ICNT_0,ICNT_1,ICNT_2,ICNT_3,ICNT_4,
+   ICNT_5,ICNT_6,ICNT_7,ID_0,ID_1,ID_2,ID_3,ID_4,ID_5,ID_6,ID_7,INCRDL,LDOUTL,
+   OTCLKL,OUTCRDL,RESET;
+OUTPUTS	D_0,D_1,D_2,D_3,D_4,D_5,D_6,D_7,OUTER0L;
+LEVEL FUNCTION;
+DEFINE
+
+CCLKL_(CCLKL) = N1A(CCLK);
+RESETL_(RESETL) = N1A(RESET);
+
+/*  Outer counter load - as the outer counter is a synchronous counter
+loaded in one tick and the data must be multiplexed onto its inputs for
+one tick duration, it is necessary to synthesize a load clock which will
+have a suitable rising edge within the load signal.  This is given by
+producing a delayed version off the back edge of the clock and making
+the clock active (low) only during the first half of the cycle */
+
+LDOCNTD_(LDOUTDL,LDOUTD) = FD1A(LDOUTL,CCLKL);
+LDOCLK_(LDOCLKL) = OR2A(LDOUTL,LDOUTD);
+
+/* From this, the counter clock */
+
+OCLKL_(OCLKL) = AND2A(OTCLKL,LDOCLKL);
+
+/* The outer counter */
+
+LDOUTINV_(LDOUT) = N1A(LDOUTL);
+OCNT_0_(OCNT_0,OCNTL_0,CARRY_0) = LSCNTEL(ID_0,LDOUT,LDOUTL,OCLKL,RESET,
+   RESETL);
+OCNT_1_(OCNT_1,OCNTL_1,CARRY_1) = LSCNTEL(ID_1,LDOUT,LDOUTL,OCLKL,CARRY_0,
+   RESETL);
+OCNT_2_(OCNT_2,OCNTL_2,CARRY_2) = LSCNTEL(ID_2,LDOUT,LDOUTL,OCLKL,CARRY_1,
+   RESETL);
+OCNT_3_(OCNT_3,OCNTL_3,CARRY_3) = LSCNTEL(ID_3,LDOUT,LDOUTL,OCLKL,CARRY_2,
+   RESETL);
+OCNT_4_(OCNT_4,OCNTL_4,CARRY_4) = LSCNTEL(ID_4,LDOUT,LDOUTL,OCLKL,CARRY_3,
+   RESETL);
+OCNT_5_(OCNT_5,OCNTL_5,CARRY_5) = LSCNTEL(ID_5,LDOUT,LDOUTL,OCLKL,CARRY_4,
+   RESETL);
+OCNT_6_(OCNT_6,OCNTL_6,CARRY_6) = LSCNTEL(ID_6,LDOUT,LDOUTL,OCLKL,CARRY_5,
+   RESETL);
+OCNT_7_(OCNT_7,OCNTL_7,CARRY_7) = LSCNTEL(ID_7,LDOUT,LDOUTL,OCLKL,CARRY_6,
+   RESETL);
+
+/* Generate outer0 */
+
+OUTER0GEN_(OUTER0L) = ND8A(OCNTL_0,OCNTL_1,OCNTL_2,OCNTL_3,OCNTL_4,OCNTL_5,
+   OCNTL_6,OCNTL_7);
+
+/* Make the inner and outer counters readable */
+
+CRDSEL_0_(RC_0) = AO2A(INCRDL,OCNT_0,OUTCRDL,ICNT_0);
+CRDSEL_1_(RC_1) = AO2A(INCRDL,OCNT_1,OUTCRDL,ICNT_1);
+CRDSEL_2_(RC_2) = AO2A(INCRDL,OCNT_2,OUTCRDL,ICNT_2);
+CRDSEL_3_(RC_3) = AO2A(INCRDL,OCNT_3,OUTCRDL,ICNT_3);
+CRDSEL_4_(RC_4) = AO2A(INCRDL,OCNT_4,OUTCRDL,ICNT_4);
+CRDSEL_5_(RC_5) = AO2A(INCRDL,OCNT_5,OUTCRDL,ICNT_5);
+CRDSEL_6_(RC_6) = AO2A(INCRDL,OCNT_6,OUTCRDL,ICNT_6);
+CRDSEL_7_(RC_7) = AO2A(INCRDL,OCNT_7,OUTCRDL,ICNT_7);
+KEVIN_(KEVIN) = ND2A(INCRDL,OUTCRDL);
+CRDEN_0_(D_0) = BTS5A(RC_0,KEVIN);
+CRDEN_1_(D_1) = BTS5A(RC_1,KEVIN);
+CRDEN_2_(D_2) = BTS5A(RC_2,KEVIN);
+CRDEN_3_(D_3) = BTS5A(RC_3,KEVIN);
+CRDEN_4_(D_4) = BTS5A(RC_4,KEVIN);
+CRDEN_5_(D_5) = BTS5A(RC_5,KEVIN);
+CRDEN_6_(D_6) = BTS5A(RC_6,KEVIN);
+CRDEN_7_(D_7) = BTS5A(RC_7,KEVIN);
+
+END MODULE;
+
+/*
+Define a loadable ripple counter element
+12 gates
+*/
+
+MODULE RIPEL;
+
+INPUTS	D,LD,LDL,CLK;
+OUTPUTS	Q,QL;
+LEVEL FUNCTION;
+DEFINE
+
+PREGEN_(CLR) = OR2A(D,LDL);
+CLRGEN_(PRE) = ND2A(D,LD);
+RIPLATCH_(Q,QL) = FD3A(QL,CLK,CLR,PRE);
+
+END MODULE;
+END COMPILE;
+END;

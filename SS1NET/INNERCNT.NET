@@ -1,0 +1,82 @@
+COMPILE;
+DIRECTORY MASTER;
+/****************************************************************************
+innercnt
+15/10/88
+
+Blitter operation inner loop length counter
+
+This a a synchronous down counter, with a register containing the programmed
+value so that the counter could be reloaded.
+
+****************************************************************************/
+
+
+MODULE INNERCNT;
+
+INPUTS	CCLK,ID_0,ID_1,ID_2,ID_3,ID_4,ID_5,ID_6,ID_7,LDINRL,LDMODL,LDICNTL,
+   INCLKL,RESET;
+OUTPUTS	INNER0,ICNT_0,ICNT_1,ICNT_2,ICNT_3,ICNT_4,ICNT_5,ICNT_6,ICNT_7,ICNT_8;
+LEVEL FUNCTION;
+DEFINE
+
+CCLKL_(CCLKL) = N1A(CCLK);
+RESETL_(RESETL) = N1A(RESET);
+
+/* The Inner count value register */
+
+ICNTR_0_(ICVAL_0,ICVALL_0) = LD2A(ID_0,LDINRL);
+ICNTR_1_(ICVAL_1,ICVALL_1) = LD2A(ID_1,LDINRL);
+ICNTR_2_(ICVAL_2,ICVALL_2) = LD2A(ID_2,LDINRL);
+ICNTR_3_(ICVAL_3,ICVALL_3) = LD2A(ID_3,LDINRL);
+ICNTR_4_(ICVAL_4,ICVALL_4) = LD2A(ID_4,LDINRL);
+ICNTR_5_(ICVAL_5,ICVALL_5) = LD2A(ID_5,LDINRL);
+ICNTR_6_(ICVAL_6,ICVALL_6) = LD2A(ID_6,LDINRL);
+ICNTR_7_(ICVAL_7,ICVALL_7) = LD2A(ID_7,LDINRL);
+ICNTR_8_(ICVAL_8,ICVALL_8) = LD2A(ID_1,LDMODL);
+
+/* Inner counter load - as the inner counter is a synchronous counter
+loaded in one tick it is necessary to synthesize a load clock which will
+have a suitable rising edge within the load signal.  This is given by
+producing a delayed version off the back edge of the clock and making
+the clock active (low) only during the first half of the cycle */
+
+LDICNTD_(LDICNTDL,LDICNTD) = FD1A(LDICNTL,CCLKL);
+LDICLK_(LDICLKL) = OR2A(LDICNTL,LDICNTD);
+
+/* From this, the counter clock */
+
+ICLKL_(ICLKL) = AND2A(INCLKL,LDICLKL);
+
+/* The Inner counter */
+
+LDIINV_(LDICNT) = N1A(LDICNTL);
+ICNT_0_(ICNT_0,ICNTL_0,CARRY_0) = LSCNTEL(ICVAL_0,LDICNT,LDICNTL,ICLKL,RESET,
+   RESETL);
+ICNT_1_(ICNT_1,ICNTL_1,CARRY_1) = LSCNTEL(ICVAL_1,LDICNT,LDICNTL,ICLKL,CARRY_0,
+   RESETL);
+ICNT_2_(ICNT_2,ICNTL_2,CARRY_2) = LSCNTEL(ICVAL_2,LDICNT,LDICNTL,ICLKL,CARRY_1,
+   RESETL);
+ICNT_3_(ICNT_3,ICNTL_3,CARRY_3) = LSCNTEL(ICVAL_3,LDICNT,LDICNTL,ICLKL,CARRY_2,
+   RESETL);
+ICNT_4_(ICNT_4,ICNTL_4,CARRY_4) = LSCNTEL(ICVAL_4,LDICNT,LDICNTL,ICLKL,CARRY_3,
+   RESETL);
+ICNT_5_(ICNT_5,ICNTL_5,CARRY_5) = LSCNTEL(ICVAL_5,LDICNT,LDICNTL,ICLKL,CARRY_4,
+   RESETL);
+ICNT_6_(ICNT_6,ICNTL_6,CARRY_6) = LSCNTEL(ICVAL_6,LDICNT,LDICNTL,ICLKL,CARRY_5,
+   RESETL);
+ICNT_7_(ICNT_7,ICNTL_7,CARRY_7) = LSCNTEL(ICVAL_7,LDICNT,LDICNTL,ICLKL,CARRY_6,
+   RESETL);
+ICNT_8_(ICNT_8,ICNTL_8,CARRY_8) = LSCNTEL(ICVAL_8,LDICNT,LDICNTL,ICLKL,CARRY_7,
+   RESETL);
+
+/* Generate Inner0 */
+
+IN0T_(IN0T) = NR2A(ICNT_0,ICNT_1);
+IN0GEN_(INNER0L) = ND8A(IN0T,ICNTL_2,ICNTL_3,ICNTL_4,ICNTL_5,ICNTL_6,ICNTL_7,
+   ICNTL_8);
+INNER0_(INNER0) = N1A(INNER0L);
+
+END MODULE;
+END COMPILE;
+END;

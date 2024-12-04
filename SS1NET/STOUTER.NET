@@ -1,0 +1,99 @@
+COMPILE;
+DIRECTORY MASTER;
+/****************************************************************************
+stouter
+15/10/88
+
+Blitter outer loop control state machine
+
+The outer loop is the top level of control, and invokes the read command, 
+read parameter and inner loop state machines.  This is unchanged from the
+old blitter.
+
+****************************************************************************/
+
+
+MODULE STOUTER;
+
+INPUTS	COMDN,DSTUP,IQUIET,OUTER0L,PARDN,PARRD,SRESET,SRCUP,CCLK;
+OUTPUTS	ADSTP,INLP,LDICNTL,RDCMD,RDPAR,SDASEL,OTCLKL,IUPDDSTL,IUPDSRCL;
+LEVEL FUNCTION;
+DEFINE
+
+/* Buffer and invert some inputs */
+
+SRESETL_(SRESETL) = N1A(SRESET);
+PARDNL_(PARDNL) = N1A(PARDN);
+SRCUPL_(SRCUPL) = N1A(SRCUP);
+DSTUPL_(DSTUPL) = N1A(DSTUP);
+IQUIETL_(IQUIETL) = N1A(IQUIET);
+
+/* Decode the next state */
+
+/* Common terms */
+
+TRM0GEN_(TRM0) = ND3A(TLL_2,TL_1,TL_0);
+TRM0INV_(TRM0L) = N1A(TRM0);
+TRM3INV_(TRM3L) = N1A(TRM3);
+TRM1GEN_(TRM1) = ND2A(TRM3L,DSTUP);
+TRM2GEN_(TRM2) = ND4A(TLL_2,TLL_1,TLL_0,COMDN);
+TRM3GEN_(TRM3) = ND4A(TL_2,TLL_1,TLL_0,OUTER0L);
+
+/* Bit 0 */
+
+ITL0T0_(ITL0T_0) = ND2A(TRM0L,PARDNL);
+ITL0T1_(ITL0T_1) = ND4A(TL_2,TL_1,TLL_0,PARRD);
+ITL0T2_(ITL0T_2) = ND5A(TL_2,TL_1,TL_0,PARRD,SRCUPL);
+ITL0T3_(ITL0T_3) = ND4A(TRM3L,DSTUPL,SRCUPL,PARRD);
+ITL0T4_(ITL0T_4) = ND3A(TLL_2,TL_1,TLL_0);
+ITL0T5_(ITL0T_5) = ND4A(TLL_2,TLL_1,TL_0,IQUIETL);
+ITL0GEN_(ITL_0) = ND8A(ITL0T_0,ITL0T_1,ITL0T_2,ITL0T_3,ITL0T_4,ITL0T_5,TRM2,
+   TRM1);
+
+/* Bit 1 */
+
+ITL1T0_(ITL1T) = ND2A(TL_2,TL_1);
+ITL1GEN_(ITL_1) = ND4A(TRM0,TRM2,ITL1T,TRM3);
+
+/* Bit 2 */
+
+ITL2T0_(ITL2T_0) = ND4A(TLL_2,TLL_1,TL_0,IQUIET);
+ITL2T1_(ITL2T_1) = ND3A(TRM3L,DSTUPL,SRCUP);
+ITL2T2_(ITL2T_2) = ND4A(TL_2,TL_1,TL_0,SRCUP);
+ITL2GEN_(ITL_2) = ND4A(ITL2T_0,ITL2T_1,ITL2T_2,TRM1);
+
+/* The state latches */
+
+TLLATCH_0_(TL_0,TLL_0) = FD2A(ITL_0,CCLK,SRESETL);
+TLLATCH_1_(TL_1,TLL_1) = FD2A(ITL_1,CCLK,SRESETL);
+TLLATCH_2_(TL_2,TLL_2) = FD2A(ITL_2,CCLK,SRESETL);
+
+/* Decodes from state */
+
+ITLINV0_(ITLL_0) = N1A(ITL_0);
+ITLINV1_(ITLL_1) = N1A(ITL_1);
+ITLINV2_(ITLL_2) = N1A(ITL_2);
+RDPARGEN_(RDPAR) = NR3A(ITL_2,ITLL_1,ITLL_0);
+RDCMDGEN_(RDCMD) = NR3A(ITL_2,ITL_1,ITL_0);
+
+/* The inner loop is fired off from the set up inner count state */
+INLPGEN_(INLP) = NR3A(TL_2,TLL_1,TL_0);
+
+UDDGEN_(IUPDDSTL) = ND3A(ITL_2,ITL_1,ITL_0);
+UDSGEN_(IUPDSRCL) = ND3A(ITL_2,ITL_1,ITLL_0);
+
+/* make LDICNT a synchronous decode */
+LDICTRM_(LDICNTTL) = ND3A(ITLL_2,ITL_1,ITLL_0);
+LDICFF_(LDICNTL, LDICNT) = FD2A(LDICNTTL, CCLK, SRESETL);
+
+ADSTPGEN_(ADSTP) = NR2A(TLL_1,TLL_2);
+SDAGEN_(SDASEL) = ND3C(TLL_0,TLL_1,TLL_2);
+
+/* The outer counter is clocked on exit from the inner loop.  This is
+given by an active low pulse decoded as the inner loop. */
+
+OTCLK_(OTCLK,OTCLKL) = FD1A(INLP,CCLK);
+
+END MODULE;
+END COMPILE;
+END;

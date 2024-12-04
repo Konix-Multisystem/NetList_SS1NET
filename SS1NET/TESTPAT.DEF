@@ -1,0 +1,346 @@
+/****************************************************************************
+testpat.def
+24/10/88
+
+definitions for the Slipstream test pattern
+
+****************************************************************************/
+
+/* First the definitions of the signal mapping into the test pattern array */
+
+/* Inputs */
+
+#define FIRST_INPUT     0
+
+#define	as16		0
+#define	as17		1
+#define	as18		2
+#define	as19		3
+#define	reset		4
+#define	iom		5
+#define	ale		6
+#define	inta		7
+#define	hlda		8
+#define	xtal		9
+#define	ai0		10
+#define	ai1		11
+#define	ai2		12
+#define	lpl		13
+#define testpin		14
+#define	rdl		15
+#define	wrl		16
+
+/* Inputs-outputs */
+
+#define FIRST_OUTPUT    17
+
+#define	ad0		17 
+#define	ad1		18
+#define	ad2		19
+#define	ad3		20
+#define	ad4		21
+#define	ad5		22
+#define	ad6		23
+#define	ad7		24
+#define	a8		25
+#define	a9		26
+#define	a10		27
+#define	a11		28
+#define	a12		29
+#define	a13		30
+#define	a14		31
+#define	a15		32
+#define	d8		33
+#define	d9		34
+#define	d10		35
+#define	d11		36
+#define	d12		37
+#define	d13		38
+#define	d14		39
+#define	d15		40
+#define	vsyncl		41
+#define	hsyncl		42
+#define	joy0		43
+#define	joy1		44
+#define	joy2		45
+#define	dspio		46
+ 
+#define LAST_INPUT      46
+
+/* Outputs */
+
+#define	intr		47
+#define	a0		48
+#define	a1		49
+#define	a2		50
+#define	a3		51
+#define	a4		52
+#define	a5		53
+#define	a6		54
+#define	a7		55
+#define	a16		56
+#define	a17		57
+#define	pclk		58
+#define	hold		59
+#define	scel0		60
+#define	scel1		61
+#define	wel		62
+#define	csl0		63
+#define	csl1		64
+#define	r0		65
+#define	r1		66
+#define	r2		67
+#define	r3		68
+#define	g0		69
+#define	g1		70
+#define	g2		71
+#define	g3		72
+#define	b0		73
+#define	b1		74
+#define	b2		75
+#define	b3		76
+#define	chroma		77
+#define	leftl		78
+#define	lefth		79
+#define	rightl		80
+#define	righth		81
+#define inc		82
+#define aisel		83
+#define	oel		84
+#define	casl		85
+#define	xtalo		86
+#define	gpiol0		87
+#define	gpiol1		88
+
+#define LAST_OUTPUT     88
+ 
+#define	SIGNALS		89
+
+#define	STEPS		4000
+                                                      
+/* Definitions for events during the test */
+                          
+#if 0
+
+#define	CYCLE		100	/* Clock cycle length */
+#define	CLKH_POS	10	/* Clock rising edge in cycle (internal) */
+#define	CLKL_POS	50	/* Clock falling edge in cycle (internal) */
+#define	STRH_POS	98	/* Test Strobe rising edge in cycle */
+#define	STRL_POS	99	/* Test Strobe falling edge in cycle */
+
+#else
+
+#define	CYCLE		1000	/* Clock cycle length */
+#define	CLKH_POS	600	/* Clock rising edge in cycle (internal) */
+#define	CLKL_POS	800	/* Clock falling edge in cycle (internal) */
+#define	STRH_POS	980	/* Test Strobe rising edge in cycle */
+#define	STRL_POS	990	/* Test Strobe falling edge in cycle */
+#define QCLKH_POS       400     /* Qualifier clock falling edge         */
+#define QCLKL_POS       200     /* Qualifier clock rising edge          */
+
+#endif
+
+/* Constants for use throughout */
+
+/* IO addresses */
+
+#define	intl		"00000"
+#define inth		"00001"
+#define startl		"00002"
+#define starth		"00003"
+#define hcntl		"00004"
+#define hcnth		"00005"
+#define vcntl		"00006"
+#define vcnth		"00007"
+#define scroll1		"00008"
+#define scroll2		"00009"
+#define scroll3		"0000A"
+#define ack		"0000B"
+#define mode		"0000C"
+#define bordl		"0000D"
+#define bordh		"0000E"
+#define mask		"0000F"
+#define index		"00010"
+#define endl		"00011"
+#define endh		"00012"
+#define mem		"00013"
+#define lcd		"00014"
+#define diag		"00015"
+#define dis		"00016"
+#define trans		"00017"
+#define lp0		"00000"
+#define lp1		"00001"
+#define lp2		"00002"
+#define lp3		"00003"
+#define stat		"00004"
+#define joya0		"00040"
+#define joya1		"00050"
+#define joya2		"00040"
+#define gpioa0		"00060"
+#define gpioa1		"00070"
+
+#define BLITDST0        "00020"
+#define BLITDST1        "00021"
+#define BLITDST2        "00022"
+#define BLITSRC0        "00023"
+#define BLITSRC1        "00024"
+#define BLITSRC2        "00025"
+#define BLITSTAT        "00026"
+#define BLITICNT        "00027"
+#define BLITOCNT        "00028"
+#define BLITPC0         "00030"
+#define BLITPC1         "00031"
+#define BLITPC2         "00032"
+#define BLITCMD         "00033"
+#define BLITCON         "00034"
+#define TESTREG         "0003F"
+ 
+#ifdef UTILS
+ 
+/* First the definitions of the signal mapping into the test pattern array */
+
+char *name [SIGNALS] = {
+"xas[16]",
+"xas[17]",
+"xas[18]",
+"xas[19]",
+"xresetL",
+"xiom",
+"xale",
+"xinta",
+"xhlda",
+"xxtal",
+"xai[0]",
+"xai[1]",
+"xai[2]",
+"xlpL",
+"xtestpin",
+"xrdL",
+"xwrL",
+
+"xad[0]",
+"xad[1]",
+"xad[2]",
+"xad[3]",
+"xad[4]",
+"xad[5]",
+"xad[6]",
+"xad[7]",
+"xa[8]",
+"xa[9]",
+"xa[10]",
+"xa[11]",
+"xa[12]",
+"xa[13]",
+"xa[14]",
+"xa[15]",
+"xd[8]",
+"xd[9]",
+"xd[10]",
+"xd[11]",
+"xd[12]",
+"xd[13]",
+"xd[14]",
+"xd[15]",
+"xvsyncL",
+"xhsyncL",
+"xjoyL[0]",
+"xjoyL[1]",
+"xjoyL[2]",
+"xdspio",
+
+"xintr",
+"xa[0]",
+"xa[1]",
+"xa[2]",
+"xa[3]",
+"xa[4]",
+"xa[5]",
+"xa[6]",
+"xa[7]",
+"xa[16]",
+"xa[17]",
+"xpclk",
+"xhold",
+"xsceL[0]",
+"xsceL[1]",
+"xweL",
+"xcsL[0]",
+"xcsL[1]",
+"xr[0]",
+"xr[1]",
+"xr[2]",
+"xr[3]",
+"xg[0]",
+"xg[1]",
+"xg[2]",
+"xg[3]",
+"xb[0]",
+"xb[1]",
+"xb[2]",
+"xb[3]",
+"xchroma",
+"xleftl",
+"xlefth",
+"xrightl",
+"xrighth",
+"xinc",
+"xaisel",
+"xoeL",
+"xcasL",
+"xxtalo"};
+
+/*
+This array is used to give the default value for each signal.  When a setsig
+operation is performed, then the signal will be set back to its default 
+value from this table at the end of the time specified.  Values are:
+	0	Zero
+	1	One
+	Z	High Impedance
+	X	Don't set it to anything (also used for outputs)
+*/
+
+char def_val [SIGNALS] = {
+'0','0','0','0',				/* address/status */
+'0',						/* reset */
+'0',						/* iom */
+'0',						/* ale */
+'0',						/* inta */
+'0',						/* hlda */
+'0',						/* xtal */
+'1','1','1',					/* analogue inputs */
+'1',						/* lp */
+'0',						/* testpin */
+'1',						/* rdl */
+'1',						/* wrL */
+
+
+'Z','Z','Z','Z','Z','Z','Z','Z',		/* address/data */
+'Z','Z','Z','Z','Z','Z','Z','Z',		/* address 8..15 */
+'Z','Z','Z','Z','Z','Z','Z','Z',		/* data 8..15 */
+'Z',						/* vsync */
+'Z',						/* hsync */
+'Z','Z','Z',					/* joy 0..2 */
+'Z',						/* dspio */
+
+'X',						/* intr */
+'X','X','X','X','X','X','X','X',		/* address 0..7 */
+'X','X',					/* address 16..17 */
+'X',						/* pclk */
+'X',						/* hold */
+'X','X',					/* screen chip selects */
+'X',						/* weL */
+'X','X',					/* ROM chip selects */
+'X','X','X','X',				/* red */
+'X','X','X','X',				/* green */
+'X','X','X','X',				/* blue */
+'X',						/* chroma */
+'X','X','X','X',				/* pwm */
+'X','X',					/* inc and aisel */
+'X',						/* oel */
+'X',						/* casl */
+'X',						/* xtalo */
+'X','X'};					/* gpiol 0..1 */
+
+#endif
+

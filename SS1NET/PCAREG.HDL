@@ -1,0 +1,39 @@
+(****************************************************************************
+pcareg
+22/9/88
+
+Blitter program address register
+
+The register is loaded in byte chunks by pcwrL[0-2], or as a whole by
+updpcL.  The selection between input data and adder output is given by 
+run.
+
+****************************************************************************)
+
+IMPORT gates, latches, macros;
+
+DEF PCAREG (addq[0..19], id[0..7], pcwrL[0..2], run, updpcL :IN; 
+	pcL[0..19] :IO);
+
+pc[0..19], runL, pci[0..19], pcldL[0..2] :IO;
+
+BEGIN
+
+(* The load enables for the latches *)
+
+Pcld[0-2]        := AND2 (pcwrL[0-2], updpcL, pcldL[0-2]);
+
+(* Multiplex between the adder output and the data bus *)
+
+RunL		:= INV1 (run, runL);
+Pmux[0-7]	:= AOI (run, addq[0-7], runL, id[0-7], pci[0-7]);
+Pmux[8-15]	:= AOI (run, addq[8-15], runL, id[0-7], pci[8-15]);
+Pmux[16-19]	:= AOI (run, addq[16-19], runL, id[0-3], pci[16-19]);
+
+(* The address register *)
+
+Pclatch[0-7]	:= DTLATCH1 (pci[0-7], pcldL[0], pcL[0-7], pc[0-7]);
+Pclatch[8-15]	:= DTLATCH1 (pci[8-15], pcldL[1], pcL[8-15], pc[8-15]);
+Pclatch[16-19]	:= DTLATCH1 (pci[16-19], pcldL[2], pcL[16-19], pc[16-19]);
+
+END

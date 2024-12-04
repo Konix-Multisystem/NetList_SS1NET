@@ -1,0 +1,32 @@
+(****************************************************************************
+addamux
+22/9/88
+
+Address adder A input multiplexer
+
+****************************************************************************)
+
+IMPORT gates, macros;
+
+DEF ADDAMUX (saL[0..19], daL[0..19], pcL[0..19], updsrcL, updpcL, sam1L, 
+	dam1L :IN; 
+	addam1, adda[0..19] :IO);
+
+seldst, selpc, selsrc, updsrc :IO;
+
+BEGIN
+
+(* Generate the select signals *)
+
+Selpc		:= N1D (updpcL, selpc);
+UpdsrcL		:= INV1 (updsrcL, updsrc);
+Seldst		:= NR2C (updsrc, selpc, seldst);
+Selsrc		:= NR2C (updsrcL, selpc, selsrc);
+
+(* Perform the multiplexing *)
+
+Addamuxm1	:= AO11A (selpc, updpcL, selsrc, sam1L, seldst, dam1L, addam1);
+Addamux[0-19]	:= AO11A (selpc, pcL[0-19], selsrc, saL[0-19], seldst, 
+			daL[0-19], adda[0-19]);
+
+END

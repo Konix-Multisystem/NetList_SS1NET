@@ -1,0 +1,248 @@
+COMPILE;
+DIRECTORY MASTER;
+/********************************************************
+*	lego-q						*
+*	23/8/88						*
+********************************************************/
+
+/*
+This module contains building blocks for other modules in SLIPSTREAM
+
+This version is for use with the Qudos software.
+ie it contains definitions of high power gates which are part
+of the LSI library
+
+*/
+
+
+
+/* SYNCNT is a middle stage of a synchronous load and clear
+up counter. Load is active low, clear is active high, carry-in is
+active high */
+
+MODULE SYNCNT;
+
+INPUTS	D,CLK,CLR,LDL,CI;
+OUTPUTS	Q,QB,CO;
+LEVEL FUNCTION;
+DEFINE
+
+CIL_(CIL,LD) = MACINV2(CI,LDL);
+
+
+DI_0_(DI_0) = AO2A(CI,Q,CIL,QB);	/* toggle/static */
+
+DI_1_(DI_1) = AO2A(D,LD,DI_0,LDL);/* load/count */
+
+DI_(DI) = NR2A(DI_1,CLR);		/* clear */
+
+
+Q_(Q,QB) = FD1A(DI,CLK);
+
+CO_(CO) = NR2A(CIL,QB);
+
+END MODULE;
+
+/* SYNCNT0 is the first stage of the above counter
+carry-in is wired high */
+
+MODULE SYNCNT0;
+
+INPUTS	D,CLK,CLR,LDL;
+OUTPUTS	Q,QB;
+LEVEL FUNCTION;
+DEFINE
+
+LD_(LD) = N1A(LDL);
+
+
+DI_1_(DI_1) = AO2A(D,LD,QB,LDL);	/* load/count */
+
+DI_(DI) = NR2A(DI_1,CLR);		/* clear */
+
+
+Q_(Q,QB) = FD1A(DI,CLK);
+
+
+END MODULE;
+
+/* ZTLATCH1B is a tristate transmission latch with inverted output
+the clock and enable are active low */
+
+MODULE ZTLATCH1;
+
+INPUTS	QB,D,CLK,ENL;
+OUTPUTS	QB;
+
+LEVEL FUNCTION;
+DEFINE
+
+QI_(QI,QIB) = LD1A(D,CLK);
+QB_(QB) = MACZINVB1(QI,ENL);
+
+END MODULE;
+
+/* XNOR is an XNOR gate which only uses 3 gates rather than the TI
+equivalent which uses 4 */
+
+MODULE XNOR;
+
+INPUTS	A,B;
+OUTPUTS	C;
+LEVEL FUNCTION;
+DEFINE
+
+AL_(AL,BL) = MACINV2(A,B);
+C_(C) = AO2A(A,BL,AL,B);
+
+END MODULE;
+
+/* AND10 is a ten input AND gate */
+
+MODULE AND10;
+
+INPUTS	A_1,A_2,A_3,A_4,A_5,A_6,A_7,A_8,A_9,A_10;
+OUTPUTS	B;
+LEVEL FUNCTION;
+DEFINE
+ANDD1_(ANDD_1) = ND4A(A_1,A_2,A_3,A_4);
+ANDD2_(ANDD_2) = ND4A(A_5,A_6,A_7,A_8);
+ANDD3_(ANDD_3) = ND2A(A_9,A_10);
+B_(B) = NR3A(ANDD_1,ANDD_2,ANDD_3);
+END MODULE;
+
+/* AND11 is an eleven input AND gate */
+
+MODULE AND11;
+
+INPUTS	A_1,A_2,A_3,A_4,A_5,A_6,A_7,A_8,A_9,A_10,A_11;
+OUTPUTS	B;
+LEVEL FUNCTION;
+DEFINE
+ANDD1_(ANDD_1) = ND4A(A_1,A_2,A_3,A_4);
+ANDD2_(ANDD_2) = ND4A(A_5,A_6,A_7,A_8);
+ANDD3_(ANDD_3) = ND3A(A_9,A_10,A_11);
+B_(B) = NR3A(ANDD_1,ANDD_2,ANDD_3);
+END MODULE;
+
+
+/* JK is a JK flip flop with reset. J, K and R are active high */
+
+MODULE JK;
+
+INPUTS	J,K,R,CLK;
+OUTPUTS	Q,QB;
+LEVEL FUNCTION;
+DEFINE
+KL_(KL) = NR2A(K,R);
+Q_(Q,QB) = MACJKBART(J,KL,CLK);
+END MODULE;
+
+
+/* AND9 is a nine input AND gate */
+
+MODULE AND9;
+
+INPUTS	A_1,A_2,A_3,A_4,A_5,A_6,A_7,A_8,A_9;
+OUTPUTS	B;
+LEVEL FUNCTION;
+DEFINE
+ANDD1_(ANDD_1) = ND4A(A_1,A_2,A_3,A_4);
+ANDD2_(ANDD_2) = ND5A(A_5,A_6,A_7,A_8,A_9);
+B_(B) = NR2A(ANDD_1,ANDD_2);
+END MODULE;
+
+
+/* SYNDCNTP is a middle stage of a synchronous down
+counter with preset. preset is active low, carry-in is active high */
+
+MODULE SYNDCNTP;
+
+INPUTS	CLK,PRL,CI;
+OUTPUTS	Q,QB,CO;
+LEVEL FUNCTION;
+DEFINE
+
+CIL_(CIL) = N1A(CI);
+
+
+DIL_(DIL) = AO2A(CI,QB,CIL,Q);	/* toggle/static */
+
+DI_(DI) = ND2A(DIL,PRL);		/* preset/count */
+
+
+Q_(Q,QB) = FD1A(DI,CLK);
+
+CO_(CO) = NR2A(CIL,Q);
+
+END MODULE;
+
+/* SYNDCNTC is a middle stage of a synchronous down
+counter with clear. clear is active low, carry-in is active high */
+
+MODULE SYNDCNTC;
+
+INPUTS	CLK,CLL,CI;
+OUTPUTS	Q,QB,CO;
+LEVEL FUNCTION;
+DEFINE
+
+CIL_(CIL) = N1A(CI);
+
+
+DI_0_(DI_0) = AO2A(CI,Q,CIL,QB);	/* toggle/static */
+
+DIL_(DIL) = ND2A(DI_0,CLL);		/* clear/count */
+
+
+Q_(QB,Q) = FD1A(DIL,CLK);
+
+CO_(CO) = NR2A(CIL,Q);
+
+END MODULE;
+
+/* SYNDCNTC0 is the first stage of the above counter
+carry-in is wired high */
+
+MODULE SYNDCNTC0;
+
+INPUTS	CLK,CLL;
+OUTPUTS	Q,QB;
+LEVEL FUNCTION;
+DEFINE
+
+DIL_(DIL) = ND2A(QB,CLL);		/* clear/count */
+
+Q_(QB,Q) = FD1A(DIL,CLK);
+
+END MODULE;
+
+/* MUX4 is a one of four data selector */
+
+MODULE MUX4;
+
+INPUTS	A,B,D_0,D_1,D_2,D_3;
+OUTPUTS	Q;
+LEVEL FUNCTION;
+DEFINE
+
+AL_(AL) = N1A(A);
+IDL_0_(IDL_0) = AO2A(A,D_1,AL,D_0);
+IDL_1_(IDL_1) = AO2A(A,D_3,AL,D_2);
+BL_(BL) = N1A(B);
+Q_(Q) = AO2A(B,IDL_1,BL,IDL_0);
+
+END MODULE;
+
+MODULE SR;
+
+INPUTS	S,R;
+OUTPUTS	Q,QL;
+LEVEL FUNCTION;
+DEFINE
+Q_(Q) = ND2A(S,QL);
+QL_(QL) = ND2A(R,Q);
+END MODULE;
+
+END COMPILE;
+END;

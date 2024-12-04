@@ -1,0 +1,184 @@
+COMPILE;
+DIRECTORY MASTER;
+/********************************************************
+*	hcnt-hdl					*
+*	7/11/88						*
+********************************************************/
+
+/*
+This module is the horizontal timebase in the SLIPSTREAM chip on the ACW
+*/
+
+
+
+
+MODULE HCNT;
+
+INPUTS	D_0,D_1,D_2,D_3,D_4,D_5,D_6,D_7,RESETL_0,CLK,WD_0,WD_1,WD_2,WD_3,WD_4,
+   WD_5,WD_6,WD_7,HCNTL,HCNTH,LPL_0,LPL_1,LP,HLOCK,NTSC,GENLOCK,OPEN,NEXTV;
+OUTPUTS	D_0,D_1,D_2,D_3,D_4,D_5,D_6,D_7,HVACTIVE,HSYNC,HC_0,HC_1,HC_2,HC_3,
+   HBORDER,HBLANKING,HVSYNC,LPSET,LPCLK,HD1,HVHOLD,HINT;
+LEVEL FUNCTION;
+DEFINE
+
+/* buffer the clock and reset */
+
+RESET_(RESET) = N1A(RESETL_0);
+RESETL_(RESETL) = N1C(RESET);
+
+/* latch the high bits of the horizontal count */
+
+HCNT_8_(HCNT_8,HCNTB_8) = LD1A(WD_0,HCNTH);
+HCNT_9_(HCNT_9,HCNTB_9) = LD1A(WD_1,HCNTH);
+
+/* Now the line counter */
+
+HCNTLBL_(HCNTLBL) = N1C(HCNTL);
+Q_0_(HCI_0,HCIB_0) = SYNCNT0(WD_0,CLK,NEXTH,HCNTLBL);
+Q_1_(HCI_1,HCIB_1,CO_1) = SYNCNT(WD_1,CLK,NEXTH,HCNTLBL,HCI_0);
+Q_2_(HCI_2,HCIB_2,CO_2) = SYNCNT(WD_2,CLK,NEXTH,HCNTLBL,CO_1);
+Q_3_(HCI_3,HCIB_3,CO_3) = SYNCNT(WD_3,CLK,NEXTH,HCNTLBL,CO_2);
+Q_4_(HCI_4,HCIB_4,CO_4) = SYNCNT(WD_4,CLK,NEXTH,HCNTLBL,CO_3);
+Q_5_(HCI_5,HCIB_5,CO_5) = SYNCNT(WD_5,CLK,NEXTH,HCNTLBL,CO_4);
+Q_6_(HCI_6,HCIB_6,CO_6) = SYNCNT(WD_6,CLK,NEXTH,HCNTLBL,CO_5);
+Q_7_(HCI_7,HCIB_7,CO_7) = SYNCNT(WD_7,CLK,NEXTH,HCNTLBL,CO_6);
+Q_8_(HCI_8,HCIB_8,CO_8) = SYNCNT(HCNT_8,CLK,NEXTH,HCNTLBL,CO_7);
+Q_9_(HCI_9,HCIB_9,CO_9) = SYNCNT(HCNT_9,CLK,NEXTH,HCNTLBL,CO_8);
+HC_0_(HC_0) = N1C(HCIB_0);
+HC_1_(HC_1) = N1C(HCIB_1);
+HC_2_(HC_2) = N1C(HCIB_2);
+HC_3_(HC_3) = N1C(HCIB_3);
+HC_4_(HC_4) = N1C(HCIB_4);
+HC_5_(HC_5) = N1C(HCIB_5);
+HC_6_(HC_6) = N1C(HCIB_6);
+HC_7_(HC_7) = N1C(HCIB_7);
+HC_8_(HC_8) = N1C(HCIB_8);
+HC_9_(HC_9) = N1C(HCIB_9);
+HCB_0_(HCB_0) = N1C(HCI_0);
+HCB_1_(HCB_1) = N1C(HCI_1);
+HCB_2_(HCB_2) = N1C(HCI_2);
+HCB_3_(HCB_3) = N1C(HCI_3);
+HCB_4_(HCB_4) = N1C(HCI_4);
+HCB_5_(HCB_5) = N1C(HCI_5);
+HCB_6_(HCB_6) = N1C(HCI_6);
+HCB_7_(HCB_7) = N1C(HCI_7);
+HCB_8_(HCB_8) = N1C(HCI_8);
+HCB_9_(HCB_9) = N1C(HCI_9);
+
+/* The following logic produces a pulse on lpj the the first time lp is
+asserted each frame. This signal latches the current counter state.
+The signal 'open' opens the light pen latches so that the counter can
+be read */
+
+/* sample the signal */
+
+RES_(RES) = N1A(RESETL);
+LPD_(LPD,LPDB) = FD1A(LP,CLK);
+
+/* lpj sets the latch */
+
+LPJ_(LPJ) = NR3A(LPDB,LPSET,RES);
+LPSET_(LPSET,LPQB) = JK(LPJ,NEXTV,RES,CLK);
+
+/* the latches are opened by lpj or 'open' , this will latch the next count*/
+
+LPIL_(LPIL) = NR2A(LPJ,OPEN);
+LPCLK_(LPCLK) = N1C(LPIL);
+
+DL_0_(D_0) = ZTLATCH1(D_0,HCB_0,LPCLK,LPL_0);
+DL_1_(D_1) = ZTLATCH1(D_1,HCB_1,LPCLK,LPL_0);
+DL_2_(D_2) = ZTLATCH1(D_2,HCB_2,LPCLK,LPL_0);
+DL_3_(D_3) = ZTLATCH1(D_3,HCB_3,LPCLK,LPL_0);
+DL_4_(D_4) = ZTLATCH1(D_4,HCB_4,LPCLK,LPL_0);
+DL_5_(D_5) = ZTLATCH1(D_5,HCB_5,LPCLK,LPL_0);
+DL_6_(D_6) = ZTLATCH1(D_6,HCB_6,LPCLK,LPL_0);
+DL_7_(D_7) = ZTLATCH1(D_7,HCB_7,LPCLK,LPL_0);
+DH_0_(D_0) = ZTLATCH1(D_0,HCB_8,LPCLK,LPL_1);
+DH_1_(D_1) = ZTLATCH1(D_1,HCB_9,LPCLK,LPL_1);
+DH_2_(D_2) = MACZINVB1(RESETL,LPL_1);
+DH_3_(D_3) = MACZINVB1(RESETL,LPL_1);
+DH_4_(D_4) = MACZINVB1(RESETL,LPL_1);
+DH_5_(D_5) = MACZINVB1(RESETL,LPL_1);
+DH_6_(D_6) = MACZINVB1(RESETL,LPL_1);
+DH_7_(D_7) = MACZINVB1(RESETL,LPL_1);
+
+
+/* The decodes */
+
+
+HD1_(HD1) = AND11(RESETL,HCB_9,HCB_8,HCB_7,HCB_6,HCB_5,HCB_4,HCB_3,HCB_2,HCB_1,
+   HC_0);
+
+HD68_(HD68) = AND11(RESETL,HCB_9,HCB_8,HCB_7,HC_6,HCB_5,HCB_4,HCB_3,HC_2,HCB_1,
+   HCB_0);
+
+HD103_(HD103) = AND11(RESETL,HCB_9,HCB_8,HCB_7,HC_6,HC_5,HCB_4,HCB_3,HC_2,HC_1,
+   HC_0);
+
+HD111_(HD111) = AND11(RESETL,HCB_9,HCB_8,HCB_7,HC_6,HC_5,HCB_4,HC_3,HC_2,HC_1,
+   HC_0);
+
+HD119_(HD119) = AND11(RESETL,HCB_9,HCB_8,HCB_7,HC_6,HC_5,HC_4,HCB_3,HC_2,HC_1,
+   HC_0);
+
+HD623_(HD623) = AND11(RESETL,HC_9,HCB_8,HCB_7,HC_6,HC_5,HCB_4,HC_3,HC_2,HC_1,
+   HC_0);
+
+HD631_(HD631) = AND11(RESETL,HC_9,HCB_8,HCB_7,HC_6,HC_5,HC_4,HCB_3,HC_2,HC_1,
+   HC_0);
+
+HD643_(HD643) = AND11(RESETL,HC_9,HCB_8,HC_7,HCB_6,HCB_5,HCB_4,HCB_3,HCB_2,HC_1,
+   HC_0);
+
+HD682_(HD682) = AND11(RESETL,HC_9,HCB_8,HC_7,HCB_6,HC_5,HCB_4,HC_3,HCB_2,HC_1,
+   HCB_0);
+
+HD700_(HD700) = AND11(RESETL,HC_9,HCB_8,HC_7,HCB_6,HC_5,HC_4,HC_3,HC_2,HCB_1,
+   BIT0);
+
+HD756_(HD756) = AND11(RESETL,HC_9,HCB_8,HC_7,HC_6,HC_5,HC_4,HCB_3,HC_2,HCB_1,
+   BIT0);
+
+/* NB the decodes for hsync and line length are one greater for ntsc */
+
+PAL_(PAL) = N1A(NTSC);
+BIT0_(BIT0) = AO2A(PAL,HC_0,NTSC,HCB_0);
+
+
+/* The last decode is combined with the horizontal lock input so they
+have an equivalent effect */
+
+HD756L_(HD756L) = N1A(HD756);
+HLOCKD_(HLOCKD,HLOCKDL) = FD2A(HLOCK,CLK,RESETL);
+HLOCKL_(HLOCKL) = ND2A(GENLOCK,HLOCKD);
+NEXTH_(NEXTH) = ND2C(HLOCKL,HD756L);
+
+/* generate horizontal sync but disable when genlocking */
+
+HSYNCDL_(HSYNCD,HSYNCDL) = JK(HD700,NEXTH,RES,CLK);
+HSYNC_(HSYNC) = NR2A(HSYNCDL,GENLOCK);
+
+/* generate other signals */
+
+HVSYNC_(HVSYNC,HVSYNCL) = JK(HD700,HD643,RES,CLK);
+HBORDERL_(HBORDER,HBORDERL) = JK(HD631,HD119,RES,CLK);
+HBLANKING_(HBLANKING,HBLANKINGL) = JK(HD682,HD68,RES,CLK);
+
+/* hvactive leads border by eight ticks */
+
+HVACTIVE_(HVACTIVE,HVACTIVEL) = FJK2A(HD111,HD623,CLK,RESETL);
+
+/* hvhold is asserted 6 microprocessor clocks before the first video cycle */
+
+/* WARNING the response time of the 8088 is not known exactly */
+
+HVHOLD_(HVHOLD,HVHOLDL) = JK(HD103,HD623,RES,CLK);
+
+/* interupts may occur at end of active area */
+
+HINT_(HINT) = B3A(HD623);
+
+END MODULE;
+
+END COMPILE;
+END;

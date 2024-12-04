@@ -1,0 +1,410 @@
+COMPILE;
+DIRECTORY MASTER;
+/********************************************************
+*	bm-hdl						*
+*	1/11/88						*
+********************************************************/
+
+
+
+/* 
+This module is the bus manager in the SLIPSTREAM chip on the ACW
+
+It is responsible for the following:-
+
+Latching the host address
+Enabling the host address onto the internal address bus
+Enabling the coprocessor or video address onto the external address bus
+Multiplexing the address for DRAMs
+Enabling external data onto the internal data bus 
+Enabling internal data onto the external data bus
+Swapping data between the lower and upper halves of the data bus
+for eight bit access to the odd SRAM and joysticks
+Puting zero on the data bus during reset
+
+*/
+
+
+
+
+MODULE BM;
+
+INPUTS	A_0,A_1,A_2,A_3,A_4,A_5,A_6,A_7,A_8,A_9,A_10,A_11,A_12,A_13,A_14,A_15,
+   A_16,A_17,A_18,A_19,D_0,D_1,D_2,D_3,D_4,D_5,D_6,D_7,D_8,D_9,D_10,D_11,D_12,
+   D_13,D_14,D_15,RESETL_0,VADL_0,VADL_1,VADL_2,VADL_3,VADL_4,VADL_5,VADL_6,
+   VADL_7,VAL_8,VAL_9,VAL_10,VAL_11,VAL_12,VAL_13,VAL_14,VAL_15,VDL_8,VDL_9,
+   VDL_10,VDL_11,VDL_12,VDL_13,VDL_14,VDL_15,VRD,VWR,ASL_16,ASL_17,ASL_18,
+   ASL_19,IOML,ALEL,INTAL,HLDAL,BHOLDL,BWORD,DWORD,VHOLDL,SSIORD,JOYL_0,JOYL_1,
+   SA_0,SA_1,SA_2,SA_3,SA_4,SA_5,SA_6,SA_7,SA_8,SA_9,SA_10,SA_11,SA_12,SA_13,
+   SA_14,SA_15,SA_16,SA_17,SAEN,MUXL,BRD,DRD,BWR,DWR;
+OUTPUTS	A_0,A_1,A_2,A_3,A_4,A_5,A_6,A_7,A_8,A_9,A_10,A_11,A_12,A_13,A_14,A_15,
+   A_16,A_17,A_18,A_19,D_0,D_1,D_2,D_3,D_4,D_5,D_6,D_7,D_8,D_9,D_10,D_11,D_12,
+   D_13,D_14,D_15,VAD_0,VAD_1,VAD_2,VAD_3,VAD_4,VAD_5,VAD_6,VAD_7,ADEN,VAL_0,
+   VAL_1,VAL_2,VAL_3,VAL_4,VAL_5,VAL_6,VAL_7,VA_8,VA_9,VA_10,VA_11,VA_12,VA_13,
+   VA_14,VA_15,AEN,VAL_16,VAL_17,DEN,VD_8,VD_9,VD_10,VD_11,VD_12,VD_13,VD_14,
+   VD_15,VRDL,VWRL,HOLDL,WD_0,WD_1,WD_2,WD_3,WD_4,WD_5,WD_6,WD_7,PALCS,DCSL,RDL,
+   WRL;
+LEVEL FUNCTION;
+DEFINE
+
+/* Latch the processors address */
+
+ALE_(ALE) = N1C(ALEL);
+PA_0_(PAL_0,PA_0) = LD1A(VADL_0,ALE);
+PA_1_(PAL_1,PA_1) = LD1A(VADL_1,ALE);
+PA_2_(PAL_2,PA_2) = LD1A(VADL_2,ALE);
+PA_3_(PAL_3,PA_3) = LD1A(VADL_3,ALE);
+PA_4_(PAL_4,PA_4) = LD1A(VADL_4,ALE);
+PA_5_(PAL_5,PA_5) = LD1A(VADL_5,ALE);
+PA_6_(PAL_6,PA_6) = LD1A(VADL_6,ALE);
+PA_7_(PAL_7,PA_7) = LD1A(VADL_7,ALE);
+PA_16_(PAL_16,PA_16) = LD1A(ASL_16,ALE);
+PA_17_(PAL_17,PA_17) = LD1A(ASL_17,ALE);
+PA_18_(PAL_18,PA_18) = LD1A(ASL_18,ALE);
+PA_19_(PAL_19,PA_19) = LD1A(ASL_19,ALE);
+
+/* enable onto the internal address bus */
+/* the microprocessors address is enabled except when hlda is asserted */
+/* NB the blitter should enable its address whenever hlda is asserted,
+even if it did not issue a hold, in order that this bus does not float */
+
+
+A_0_(A_0) = BTS5A(PAL_0,PAEN);
+A_1_(A_1) = BTS5A(PAL_1,PAEN);
+A_2_(A_2) = BTS5A(PAL_2,PAEN);
+A_3_(A_3) = BTS5A(PAL_3,PAEN);
+A_4_(A_4) = BTS5A(PAL_4,PAEN);
+A_5_(A_5) = BTS5A(PAL_5,PAEN);
+A_6_(A_6) = BTS5A(PAL_6,PAEN);
+A_7_(A_7) = BTS5A(PAL_7,PAEN);
+A_8_(A_8) = BTS5A(VAL_8,PAEN);
+A_9_(A_9) = BTS5A(VAL_9,PAEN);
+A_10_(A_10) = BTS5A(VAL_10,PAEN);
+A_11_(A_11) = BTS5A(VAL_11,PAEN);
+A_12_(A_12) = BTS5A(VAL_12,PAEN);
+A_13_(A_13) = BTS5A(VAL_13,PAEN);
+A_14_(A_14) = BTS5A(VAL_14,PAEN);
+A_15_(A_15) = BTS5A(VAL_15,PAEN);
+A_16_(A_16) = BTS5A(PAL_16,PAEN);
+A_17_(A_17) = BTS5A(PAL_17,PAEN);
+A_18_(A_18) = BTS5A(PAL_18,PAEN);
+A_19_(A_19) = BTS5A(PAL_19,PAEN);
+
+/* mix coprocessor read and write strobes */
+
+CRD_(CRD) = OR2A(BRD,DRD);
+CWR_(CWR) = OR2A(BWR,DWR);
+WORDL_(WORDL) = NR2A(DWORD,BWORD);
+RDL_(RDL) = AO2C(HLDA,CRD,HLDAL,VRD);
+WRL_(WRL) = AO2C(HLDA,CWR,HLDAL,VWR);
+VRDL_(VRDL) = B3A(RDL);
+VWRL_(VWRL) = B3A(WRL);
+
+/* select between the video address or coprocessor address */
+/* the video address does not appear on the internal address bus */
+
+SAENL_(SAENL) = N1C(SAEN);
+SAENBL_(SAENBL) = B1A(SAEN);
+SAENB_(SAENB) = B1A(SAENL);
+
+OA_0_(OAL_0) = AO2A(SA_0,SAENB,A_0,SAENBL);
+OA_1_(OAL_1) = AO2A(SA_1,SAENB,A_1,SAENBL);
+OA_2_(OAL_2) = AO2A(SA_2,SAENB,A_2,SAENBL);
+OA_3_(OAL_3) = AO2A(SA_3,SAENB,A_3,SAENBL);
+OA_4_(OAL_4) = AO2A(SA_4,SAENB,A_4,SAENBL);
+OA_5_(OAL_5) = AO2A(SA_5,SAENB,A_5,SAENBL);
+OA_6_(OAL_6) = AO2A(SA_6,SAENB,A_6,SAENBL);
+OA_7_(OAL_7) = AO2A(SA_7,SAENB,A_7,SAENBL);
+OA_8_(OAL_8) = AO2A(SA_8,SAENB,A_8,SAENBL);
+OA_9_(OAL_9) = AO2A(SA_9,SAENB,A_9,SAENBL);
+OA_10_(OAL_10) = AO2A(SA_10,SAENB,A_10,SAENBL);
+OA_11_(OAL_11) = AO2A(SA_11,SAENB,A_11,SAENBL);
+OA_12_(OAL_12) = AO2A(SA_12,SAENB,A_12,SAENBL);
+OA_13_(OAL_13) = AO2A(SA_13,SAENB,A_13,SAENBL);
+OA_14_(OAL_14) = AO2A(SA_14,SAENB,A_14,SAENBL);
+OA_15_(OAL_15) = AO2A(SA_15,SAENB,A_15,SAENBL);
+OA_16_(OAL_16) = AO2A(SA_16,SAENB,A_16,SAENBL);
+VAL_17_(VAL_17) = AO2A(SA_17,SAENB,A_17,SAENBL);
+
+/* the low eight address lines may be multiplexed for DRAMs */
+
+MUX_(MUX) = N1C(MUXL);
+MUXB_(MUXB) = B1A(MUXL);
+MUXBL_(MUXBL) = B1A(MUX);
+
+VA_0_(VA_0) = AO2A(OAL_0,MUXBL,OAL_8,MUXB);
+VA_1_(VA_1) = AO2A(OAL_1,MUXBL,OAL_9,MUXB);
+VA_2_(VA_2) = AO2A(OAL_2,MUXBL,OAL_10,MUXB);
+VA_3_(VA_3) = AO2A(OAL_3,MUXBL,OAL_11,MUXB);
+VA_4_(VA_4) = AO2A(OAL_4,MUXBL,OAL_12,MUXB);
+VA_5_(VA_5) = AO2A(OAL_5,MUXBL,OAL_13,MUXB);
+VA_6_(VA_6) = AO2A(OAL_6,MUXBL,OAL_14,MUXB);
+VA_7_(VA_7) = AO2A(OAL_7,MUXBL,OAL_15,MUXB);
+VAL_0_(VAL_0) = N1A(VA_0); 
+
+VAL_1_(VAL_1) = N1A(VA_1); 
+
+VAL_2_(VAL_2) = N1A(VA_2); 
+
+VAL_3_(VAL_3) = N1A(VA_3); 
+
+VAL_4_(VAL_4) = N1A(VA_4); 
+
+VAL_5_(VAL_5) = N1A(VA_5); 
+
+VAL_6_(VAL_6) = N1A(VA_6); 
+
+VAL_7_(VAL_7) = N1A(VA_7); 
+
+
+VA_8_(VA_8) = N1A(OAL_8);
+VA_9_(VA_9) = N1A(OAL_9);
+VA_10_(VA_10) = N1A(OAL_10);
+VA_11_(VA_11) = N1A(OAL_11);
+VA_12_(VA_12) = N1A(OAL_12);
+VA_13_(VA_13) = N1A(OAL_13);
+VA_14_(VA_14) = N1A(OAL_14);
+VA_15_(VA_15) = N1A(OAL_15);
+
+/* A16 may also be multiplexed for DRAMs */
+
+VA_16_(VA_16) = AO2A(OAL_16,MUXBL,VAL_17,MUXB);
+VAL_16_(VAL_16) = N1A(VA_16);
+
+/* A8-A15, RDL and WRL are enabled when hlda is asserted */
+
+AEN_(AEN) = N1C(HLDAL);
+PAEN_(PAEN) = N1C(AEN);
+
+/* Zero is put on the internal bus during reset,
+so that registers may be cleared without much additional logic */
+
+/* Delay the enable to provide hold time */
+
+RESET_0_(RESET_0) = N1A(RESETL_0);
+RESETL_1_(RESETL_1) = N1A(RESET_0);
+RESET_1_(RESET_1) = N1A(RESETL_1);
+RESETL_2_(RESETL_2) = N1A(RESET_1);
+RESET_2_(RESET_2) = N1A(RESETL_2);
+RESETL_3_(RESETL_3) = N1A(RESET_2);
+RESET_3_(RESET_3) = N1A(RESETL_3);
+RESETL_4_(RESETL_4) = N1A(RESET_3);
+RESET_4_(RESET_4) = N1A(RESETL_4);
+RESETL_5_(RESETL_5) = N1A(RESET_4);
+RESET_5_(RESET_5) = N1A(RESETL_5);
+RESETL_6_(RESETL_6) = N1A(RESET_5);
+RESET_6_(RESET_6) = N1A(RESETL_6);
+DR_0_(D_0) = BTS5A(RESET_6,RESET_6);
+DR_1_(D_1) = BTS5A(RESET_6,RESET_6);
+DR_2_(D_2) = BTS5A(RESET_6,RESET_6);
+DR_3_(D_3) = BTS5A(RESET_6,RESET_6);
+DR_4_(D_4) = BTS5A(RESET_6,RESET_6);
+DR_5_(D_5) = BTS5A(RESET_6,RESET_6);
+DR_6_(D_6) = BTS5A(RESET_6,RESET_6);
+DR_7_(D_7) = BTS5A(RESET_6,RESET_6);
+
+/* zero is put onto the top half of the bus during internal memory reads
+and internal io reads. This prevents it from floating */
+
+IMRDL_(IMRDL) = ND4A(IOML,RD,A_18,AL_19);
+EN0_(EN0) = ND3B(IMRDL,SSIORDL,RESETL_6);
+DR_8_(D_8) = BTS5A(EN0,EN0);
+DR_9_(D_9) = BTS5A(EN0,EN0);
+DR_10_(D_10) = BTS5A(EN0,EN0);
+DR_11_(D_11) = BTS5A(EN0,EN0);
+DR_12_(D_12) = BTS5A(EN0,EN0);
+DR_13_(D_13) = BTS5A(EN0,EN0);
+DR_14_(D_14) = BTS5A(EN0,EN0);
+DR_15_(D_15) = BTS5A(EN0,EN0);
+
+/* enable the host data onto the internal data bus except:-
+
+1)	when the host is reading internal IO
+2)	when the host is reading internal memory
+3)	during interupt acknowledge
+4)	when the coprocessors are writing
+5)	when coprocessors reading from internal memory
+6)	during reset
+
+*/
+
+DH_0_(D_0) = BTS5A(SDL_0,ENID);
+DH_1_(D_1) = BTS5A(SDL_1,ENID);
+DH_2_(D_2) = BTS5A(SDL_2,ENID);
+DH_3_(D_3) = BTS5A(SDL_3,ENID);
+DH_4_(D_4) = BTS5A(SDL_4,ENID);
+DH_5_(D_5) = BTS5A(SDL_5,ENID);
+DH_6_(D_6) = BTS5A(SDL_6,ENID);
+DH_7_(D_7) = BTS5A(SDL_7,ENID);
+DH_8_(D_8) = BTS5A(VDL_8,ENID);
+DH_9_(D_9) = BTS5A(VDL_9,ENID);
+DH_10_(D_10) = BTS5A(VDL_10,ENID);
+DH_11_(D_11) = BTS5A(VDL_11,ENID);
+DH_12_(D_12) = BTS5A(VDL_12,ENID);
+DH_13_(D_13) = BTS5A(VDL_13,ENID);
+DH_14_(D_14) = BTS5A(VDL_14,ENID);
+DH_15_(D_15) = BTS5A(VDL_15,ENID);
+
+/* internal IO reads are decoded by iodec */
+
+SSIORDL_(SSIORDL) = N1A(SSIORD);
+
+/* decode host internal memory reads */
+
+SSIMRDL_(SSIMRDL) = ND5A(HLDAL,IOML,VRD,A_18,AL_19);
+
+/* decode coproccesor writes */
+
+HLDA_(HLDA) = N1B(HLDAL);
+WR_(WR) = N1A(WRL);
+COPWRL_(COPWRL) = ND2A(HLDA,WR);
+
+/* copwrnvL is not asserted during video fetches */
+
+COPWRNVL_(COPWRNVL) = ND3A(HLDA,WR,SAENL);
+
+/* decode coproccesor internal reads */
+
+RD_(RD) = N1A(RDL);
+COPIMRDL_(COPIMRDL) = ND4A(HLDA,RD,A_18,AL_19);
+
+ENIDL_(ENIDL) = ND6A(SSIORDL,SSIMRDL,INTAL,COPWRL,COPIMRDL,RESETL_6);
+ENID_(ENID) = B1A(ENIDL);
+
+/* when SWAP1 is asserted the low byte on the internal bus is presented
+to D[8-15] output pads: when SWAP2 is asserted D[8-15] input pad is presented 
+to the low byte on the internal bus */
+
+VAD_0_(VAD_0) = B3A(D_0);
+VAD_1_(VAD_1) = B3A(D_1);
+VAD_2_(VAD_2) = B3A(D_2);
+VAD_3_(VAD_3) = B3A(D_3);
+VAD_4_(VAD_4) = B3A(D_4);
+VAD_5_(VAD_5) = B3A(D_5);
+VAD_6_(VAD_6) = B3A(D_6);
+VAD_7_(VAD_7) = B3A(D_7);
+
+SDL_8_(SDL_8) = AO2A(D_8,SWAP1L,D_0,SWAP1);
+SDL_9_(SDL_9) = AO2A(D_9,SWAP1L,D_1,SWAP1);
+SDL_10_(SDL_10) = AO2A(D_10,SWAP1L,D_2,SWAP1);
+SDL_11_(SDL_11) = AO2A(D_11,SWAP1L,D_3,SWAP1);
+SDL_12_(SDL_12) = AO2A(D_12,SWAP1L,D_4,SWAP1);
+SDL_13_(SDL_13) = AO2A(D_13,SWAP1L,D_5,SWAP1);
+SDL_14_(SDL_14) = AO2A(D_14,SWAP1L,D_6,SWAP1);
+SDL_15_(SDL_15) = AO2A(D_15,SWAP1L,D_7,SWAP1);
+VD_8_(VD_8) = N1A(SDL_8);
+VD_9_(VD_9) = N1A(SDL_9);
+VD_10_(VD_10) = N1A(SDL_10);
+VD_11_(VD_11) = N1A(SDL_11);
+VD_12_(VD_12) = N1A(SDL_12);
+VD_13_(VD_13) = N1A(SDL_13);
+VD_14_(VD_14) = N1A(SDL_14);
+VD_15_(VD_15) = N1A(SDL_15);
+
+SD_0_(SD_0) = AO2A(VADL_0,SWAP2L,VDL_8,SWAP2);
+SD_1_(SD_1) = AO2A(VADL_1,SWAP2L,VDL_9,SWAP2);
+SD_2_(SD_2) = AO2A(VADL_2,SWAP2L,VDL_10,SWAP2);
+SD_3_(SD_3) = AO2A(VADL_3,SWAP2L,VDL_11,SWAP2);
+SD_4_(SD_4) = AO2A(VADL_4,SWAP2L,VDL_12,SWAP2);
+SD_5_(SD_5) = AO2A(VADL_5,SWAP2L,VDL_13,SWAP2);
+SD_6_(SD_6) = AO2A(VADL_6,SWAP2L,VDL_14,SWAP2);
+SD_7_(SD_7) = AO2A(VADL_7,SWAP2L,VDL_15,SWAP2);
+SDL_0_(SDL_0) = N1A(SD_0);
+SDL_1_(SDL_1) = N1A(SD_1);
+SDL_2_(SDL_2) = N1A(SD_2);
+SDL_3_(SDL_3) = N1A(SD_3);
+SDL_4_(SDL_4) = N1A(SD_4);
+SDL_5_(SDL_5) = N1A(SD_5);
+SDL_6_(SDL_6) = N1A(SD_6);
+SDL_7_(SDL_7) = N1A(SD_7);
+
+
+/* SWAP is asserted:-
+
+1) when the host is host is reading or writing to odd SRAM
+2) when the coproccesors are reading or writing to odd SRAM and word is clear
+3) when the host reads the joysticks
+*/
+
+/* decode odd host SRAM accesses */
+
+AL_18_(AL_18) = N1A(A_18);
+AL_19_(AL_19) = N1A(A_19);
+HODDL_(HODDL) = ND5A(HLDAL,IOML,A_0,AL_18,AL_19);
+HODDRL_(HODDRL) = OR2A(RDL,HODDL);
+
+/* decode odd coproccesor SRAM accesses */
+
+CODDL_(CODDL) = ND6A(HLDA,SAENL,A_0,AL_18,AL_19,WORDL);
+
+/* decode joystick reads */
+
+JOYL_(JOYL) = AND2A(JOYL_0,JOYL_1);
+
+SWAP_(SWAP) = ND3A(HODDL,CODDL,JOYL);
+SWAP1L_(SWAP1L) = ND2C(SWAP,DEN);
+SWAP1_(SWAP1) = N1C(SWAP1L);
+SWAP2L_(SWAP2L) = ND2C(SWAP,DENL);
+SWAP2_(SWAP2) = N1C(SWAP2L);
+
+/* the low eight data pins are enabled:-
+
+1) when the host is reading internal memory
+2) when the host is reading internal IO
+3) when the host is reading joysticks
+4) when the coprocessors are writing (except during video)
+5) during interupt acknowledge
+6) when the host is reading odd sram
+
+*/
+
+ADEN_(ADEN) = ND6B(HODDRL,SSIMRDL,SSIORDL,JOYL,INTAL,COPWRNVL);
+
+/* the high eight data pins are enabled:-
+
+1) when the host is writing to odd SRAM
+2) when the coprocessors are writing (except during video)
+
+*/
+
+HODDWL_(HODDWL) = ND6A(HLDAL,IOML,VWR,A_0,AL_18,AL_19);
+
+DEN_(DEN) = ND2C(HODDWL,COPWRNVL);
+DENL_(DENL) = N1A(DEN);
+
+/* buffer host data onto VID write bus */
+
+WD_0_(WD_0) = NR2C(VADL_0,RESET_6);
+WD_1_(WD_1) = NR2C(VADL_1,RESET_6);
+WD_2_(WD_2) = NR2C(VADL_2,RESET_6);
+WD_3_(WD_3) = NR2C(VADL_3,RESET_6);
+WD_4_(WD_4) = NR2C(VADL_4,RESET_6);
+WD_5_(WD_5) = NR2C(VADL_5,RESET_6);
+WD_6_(WD_6) = NR2C(VADL_6,RESET_6);
+WD_7_(WD_7) = NR2C(VADL_7,RESET_6);
+
+/* hold is generated from blitter hold and video hold signals */
+
+HOLDL_(HOLDL) = AND2A(BHOLDL,VHOLDL);
+
+/* palcs is decoded here */
+/* the palette RAM lies between 40000 and 401FF */
+
+PR_(PR) = NR8A(A_12,A_13,A_14,A_15,A_16,A_17,AL_18,A_19);
+AL_9_(AL_9) = N1A(A_9);
+AL_10_(AL_10) = N1A(A_10);
+AL_11_(AL_11) = N1A(A_11);
+AL_14_(AL_14) = N1A(A_14);
+
+PALCSL_(PALCSL) = ND5A(PR,IOML,AL_9,AL_10,AL_11);
+PALCS_(PALCS) = N1C(PALCSL);
+
+/* the dsp lies between 41000 and 41FFF */
+
+AL_12_(AL_12) = N1A(A_12);
+D0_(D0) = NR8A(AL_12,A_13,A_14,A_15,A_16,A_17,AL_18,A_19);
+DCSL_(DCSL) = ND3C(D0,IOML,AL_11);
+
+END MODULE;
+END COMPILE;
+END;

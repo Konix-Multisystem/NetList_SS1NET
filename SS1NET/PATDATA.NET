@@ -1,0 +1,30 @@
+COMPILE;
+DIRECTORY MASTER;
+/****************************************************************************
+patdata
+10/10/88
+
+Pattern data register
+
+****************************************************************************/
+
+
+MODULE PATDATA;
+
+INPUTS	LDPATL,ID_0,ID_1,ID_2,ID_3,ID_4,ID_5,ID_6,ID_7;
+OUTPUTS	PATD_0,PATD_1,PATD_2,PATD_3,PATD_4,PATD_5,PATD_6,PATD_7;
+LEVEL FUNCTION;
+DEFINE
+
+DSTDL_0_(PATD_0,PATDL_0) = LD2A(ID_0,LDPATL);
+DSTDL_1_(PATD_1,PATDL_1) = LD2A(ID_1,LDPATL);
+DSTDL_2_(PATD_2,PATDL_2) = LD2A(ID_2,LDPATL);
+DSTDL_3_(PATD_3,PATDL_3) = LD2A(ID_3,LDPATL);
+DSTDL_4_(PATD_4,PATDL_4) = LD2A(ID_4,LDPATL);
+DSTDL_5_(PATD_5,PATDL_5) = LD2A(ID_5,LDPATL);
+DSTDL_6_(PATD_6,PATDL_6) = LD2A(ID_6,LDPATL);
+DSTDL_7_(PATD_7,PATDL_7) = LD2A(ID_7,LDPATL);
+
+END MODULE;
+END COMPILE;
+END;

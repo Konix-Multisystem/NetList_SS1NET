@@ -1,0 +1,69 @@
+COMPILE;
+DIRECTORY MASTER;
+/****************************************************************************
+cmdregs
+15/10/88
+
+Blitter state machine command registers
+
+Parts of some of these registers lie elsewhere in the blitter.
+
+****************************************************************************/
+
+
+MODULE CMDREGS;
+
+INPUTS	D_1,D_2,CCLK,CMDWRL,CONWRL,ICNT_8,ID_0,ID_1,ID_2,ID_3,ID_4,ID_5,ID_6,
+   ID_7,LDMODL,LDCMDL,RESET,STOP,STRD;
+OUTPUTS	D_1,D_2,COLST,DSTEN,DSTUP,LINDR,PARRD,RES_0,RES_1,RESUME,RUN,SRCEN,
+   SRCENF,SRCUP,SRESET;
+LEVEL FUNCTION;
+DEFINE
+
+RESETL_(RESETL) = N1A(RESET);
+
+/* Command Register, this is loaded by a program fetch or by an IO write
+cycle.  */
+
+CMDLDL_(CMDLDL) = AND2A(CMDWRL,LDCMDL);
+COMR_0_(RUN,RUNL) = FD2A(ID_0,CMDLDL,SRESETL);
+COMR_1_(COLST,COLSTL) = LD2A(ID_1,CMDLDL);
+COMR_2_(PARRD,PARRDL) = LD2A(ID_2,CMDLDL);
+COMR_3_(SRCUP,SRCUPL) = LD2A(ID_3,CMDLDL);
+COMR_4_(DSTUP,DSTUPL) = LD2A(ID_4,CMDLDL);
+COMR_5_(SRCEN,SRCENL) = LD2A(ID_5,CMDLDL);
+COMR_6_(DSTEN,DSTENL) = LD2A(ID_6,CMDLDL);
+COMR_7_(SRCENF,SRCENFL) = LD2A(ID_7,CMDLDL);
+
+/* Mode Register */
+
+MODL_3_(LINDR,LINDRL) = LD2A(ID_3,LDMODL);
+MODL_5_(RES_0,RESL_0) = LD2A(ID_5,LDMODL);
+MODL_6_(RES_1,RESL_1) = LD2A(ID_6,LDMODL);
+
+/* Blitter control register (part of) */
+
+/* Resume is a pulse one tick wide produced when a 1 is written to bit 1 */
+RESFF0_(RSM_0,RSML_0) = FD2A(ID_1,CONWRL,RESCLRL);
+RESFF1_(RSM_1,RSML_1) = FD2A(RSM_0,CCLK,RESETL);
+RESFF2_(RSM_2,RSML_2) = FD2A(RSM_1,CCLK,RESETL);
+RESUME_(RESUME) = NR2A(RSML_1,RSM_2);
+RESCLR_(RESCLRL) = NR2A(RSM_2,RESET);
+
+/* Sreset is a pulse one tick wide which is produced whenever a 1 is written
+to the blitter control port on bit 2.  */
+SRES0_(SRES_0,SRESL_0) = FD2A(ID_2,CONWRL,SRESETL);
+SRES1_(SRES_1,SRESL_1) = FD2A(SRES_0,CCLK,RESETL);
+SRES2_(SRES_2,SRESL_2) = FD2A(SRES_1,CCLK,RESETL);
+SRES3_(SRES_3) = NR2A(SRESL_1,SRES_2);
+SRESETL_(SRESETL) = NR2A(RESET,SRES_3);
+SRESET_(SRESET) = N1A(SRESETL);
+
+/* Blitter status port (part of) */
+
+STAT_1_(D_1) = BTS4A(STOP,STRD);
+STAT_2_(D_2) = BTS4A(ICNT_8,STRD);
+
+END MODULE;
+END COMPILE;
+END;

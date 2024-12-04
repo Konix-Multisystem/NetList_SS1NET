@@ -1,0 +1,61 @@
+(****************************************************************************
+stparam
+15/10/88
+
+State machine for the read parameters operation
+
+This state machine controls the blitter  read parameters operation within
+the outer loop.
+
+****************************************************************************)
+
+IMPORT gates, latches;
+
+DEF STPARAM (cycend, icycend, sreset, cclk, rdpar:IN;
+	 parcrq, pardn, ldinrL, ldpatL, ldstpL, ildpatL:IO);
+
+cycendL, ldinr, ldpat, ldstp, ildinrL, ildstpL, pardnt, pardnL, 
+rp[0..1], rpL[0..1], irp[0..1], rp0t[0..2], rp1t[0..2], sresetL :IO;
+
+BEGIN
+
+(* Invert some inputs *)
+
+CycendL		:= INV1 (cycend, cycendL);
+SresetL		:= INV1 (sreset, sresetL);
+
+(* Decode next state *)
+
+Irp0t0		:= NAND3 (rpL[1], rpL[0], rdpar, rp0t[0]);
+Irp0t1		:= NAND2 (rp[0], cycendL, rp0t[1]);
+Irp0t2		:= NAND3 (rp[1], rpL[0], cycend, rp0t[2]);
+Irp0gen		:= NAND3 (rp0t[0..2], irp[0]);
+
+Irp1t0		:= NAND3 (rpL[1], rp[0], cycend, rp1t[0]);
+Irp1t1		:= NAND2 (rp[1], rpL[0], rp1t[1]);
+Irp1t2		:= NAND2 (rp[1], cycendL, rp1t[2]);
+Irp1gen		:= NAND3 (rp1t[0..2], irp[1]);
+
+(* The state latches *)
+
+Rplatch[0-1]	:= DTLATCH1C (irp[0-1], cclk, sresetL, rp[0-1], rpL[0-1]);
+
+(* Decode from the state *)
+
+Ldidec		:= NAND3 (rpL[1], rp[0], icycend, ildinrL);
+Ldigen		:= DTLATCH1 (ildinrL, cclk, ldinrL, ldinr);
+Ldsdec		:= NAND3 (rp[1], rpL[0], icycend, ildstpL);
+Ldsgen		:= DTLATCH1 (ildstpL, cclk, ldstpL, ldstp);
+Ldpdec		:= NAND3 (rp[1], rp[0], icycend, ildpatL);
+Ldpgen		:= DTLATCH1 (ildpatL, cclk, ldpatL, ldpat);
+
+(* Pardn is generated synchronously to remove an asynchronous loop *)
+Pardgen		:= NAND3 (rp[0..1], icycend, pardnt);
+Pardn		:= DTLATCH1 (pardnt, cclk, pardnL, pardn);
+
+(* Parcrq is active while the state machine is active.  This is a
+look-ahead signal *)
+Parcgen		:= OR2 (irp[0..1], parcrq);
+
+END
+

@@ -1,0 +1,31 @@
+COMPILE;
+DIRECTORY MASTER;
+/****************************************************************************
+dstdata
+10/10/88
+
+Destination Data Register
+
+****************************************************************************/
+
+
+MODULE DSTDATA;
+
+INPUTS	LDDSTL,ID_0,ID_1,ID_2,ID_3,ID_4,ID_5,ID_6,ID_7;
+OUTPUTS	DSTD_0,DSTD_1,DSTD_2,DSTD_3,DSTD_4,DSTD_5,DSTD_6,DSTD_7;
+LEVEL FUNCTION;
+DEFINE
+
+DSTDL_0_(DSTD_0,DSTDL_0) = LD2A(ID_0,LDDSTL);
+DSTDL_1_(DSTD_1,DSTDL_1) = LD2A(ID_1,LDDSTL);
+DSTDL_2_(DSTD_2,DSTDL_2) = LD2A(ID_2,LDDSTL);
+DSTDL_3_(DSTD_3,DSTDL_3) = LD2A(ID_3,LDDSTL);
+DSTDL_4_(DSTD_4,DSTDL_4) = LD2A(ID_4,LDDSTL);
+DSTDL_5_(DSTD_5,DSTDL_5) = LD2A(ID_5,LDDSTL);
+DSTDL_6_(DSTD_6,DSTDL_6) = LD2A(ID_6,LDDSTL);
+DSTDL_7_(DSTD_7,DSTDL_7) = LD2A(ID_7,LDDSTL);
+
+END MODULE;
+
+END COMPILE;
+END;

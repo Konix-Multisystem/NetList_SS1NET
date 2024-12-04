@@ -1,0 +1,75 @@
+(****************************************************************************
+outercnt
+15/10/88
+
+Outer counter
+
+This is a synchronous down counter, loaded as part fo the blitter program.
+
+****************************************************************************)
+
+IMPORT gates, latches, macros;
+
+DEF OUTERCNT (cclk, icnt[0..7], id[0..7], incrdL, ldoutL, otclkL, outcrdL, 
+	reset :IN; 
+	outer0L :IO;
+	d[0..7] :TRI);
+
+carry[0..7], cclkL, ldoclkL, ldoutd, ldoutdL, kevin, ldout, oclkL, ocnt[0..7], 
+ocntL[0..7], rc[0..7], resetL :IO;
+
+BEGIN 
+
+CclkL		:= INV1 (cclk, cclkL);
+ResetL		:= INV1 (reset, resetL);
+
+(*  Outer counter load - as the outer counter is a synchronous counter
+loaded in one tick and the data must be multiplexed onto its inputs for
+one tick duration, it is necessary to synthesize a load clock which will
+have a suitable rising edge within the load signal.  This is given by
+producing a delayed version off the back edge of the clock and making
+the clock active (low) only during the first half of the cycle *)
+ 
+Ldocntd         := DTLATCH1 (ldoutL, cclkL, ldoutdL, ldoutd);
+Ldoclk          := OR2 (ldoutL, ldoutd, ldoclkL);
+ 
+(* From this, the counter clock *)
+ 
+OclkL           := AND2 (otclkL, ldoclkL, oclkL);
+ 
+(* The outer counter *)
+
+Ldoutinv	:= INV1 (ldoutL, ldout);
+Ocnt[0]		:= LSCNTEL (id[0], ldout, ldoutL, oclkL, reset, resetL,
+			ocnt[0], ocntL[0], carry[0]);
+Ocnt[1-7]	:= LSCNTEL (id[1-7], ldout, ldoutL, oclkL, carry[0-6], resetL, 
+			ocnt[1-7], ocntL[1-7], carry[1-7]);
+
+(* Generate outer0 *)
+
+Outer0gen	:= NAND8 (ocntL[0..7], outer0L);
+
+(* Make the inner and outer counters readable *)
+
+Crdsel[0-7]	:= AOI (incrdL, ocnt[0-7], outcrdL, icnt[0-7], rc[0-7]);
+Kevin		:= NAND2 (incrdL, outcrdL, kevin);
+Crden[0-7]	:= ZINV1 (rc[0-7], kevin, d[0-7]);
+
+END;
+
+(*
+Define a loadable ripple counter element
+12 gates
+*)
+
+DEF RIPEL (d, ld, ldL, clk :IN; q, qL :IO);
+
+pre, clr :IO;
+
+BEGIN
+
+Pregen		:= OR2 (d, ldL, clr);
+Clrgen		:= NAND2 (d, ld, pre);
+Riplatch	:= DTLATCH1PC (qL, clk, pre, clr, q, qL);
+
+END

@@ -1,0 +1,153 @@
+/****************************************************************************
+
+NAMES-DEF
+
+
+26 Sep 1988
+
+The signal names for Slipstream test pattern
+
+****************************************************************************/
+
+/* First the definitions of the signal mapping into the test pattern array */
+
+char *sig_name [SIGNALS] = {
+"xad[0]",
+"xad[1]",
+"xad[2]",
+"xad[3]",
+"xad[4]",
+"xad[5]",
+"xad[6]",
+"xad[7]",
+"xa[8]",
+"xa[9]",
+"xa[10]",
+"xa[11]",
+"xa[12]",
+"xa[13]",
+"xa[14]",
+"xa[15]",
+"xd[8]",
+"xd[9]",
+"xd[10]",
+"xd[11]",
+"xd[12]",
+"xd[13]",
+"xd[14]",
+"xd[15]",
+"xrdL",
+"xwrL",
+"xintr",
+"xvsyncL",
+"xhsyncL",
+"xvib",
+"xlcd[0]",
+"xlcd[1]",
+
+"xas[16]",
+"xas[17]",
+"xas[18]",
+"xas[19]",
+"xresetL",
+"xiom",
+"xale",
+"xinta",
+"xhlda",
+"xxtal",
+"xai[0]",
+"xai[1]",
+"xai[2]",
+"xai[3]",
+"xlpL",
+
+"xa[0]",
+"xa[1]",
+"xa[2]",
+"xa[3]",
+"xa[4]",
+"xa[5]",
+"xa[6]",
+"xa[7]",
+"xa[16]",
+"xa[17]",
+"xpclk",
+"xhold",
+"xsceL[0]",
+"xsceL[1]",
+"xweL",
+"xcsL[0]",
+"xcsL[1]",
+"xr[0]",
+"xr[1]",
+"xr[2]",
+"xr[3]",
+"xg[0]",
+"xg[1]",
+"xg[2]",
+"xg[3]",
+"xb[0]",
+"xb[1]",
+"xb[2]",
+"xb[3]",
+"xchroma",
+"xleftl",
+"xlefth",
+"xrightl",
+"xrighth",
+"xjoyL[0]",
+"xjoyL[1]",
+"xlcd[2]",
+"xoeL",
+"xcasL"};
+
+/*
+This array is used to give the default value for each signal.  When a setsig
+operation is performed, then the signal will be set back to its default 
+value from this table at the end of the time specified.  Values are:
+	0	Zero
+	1	One
+	Z	High Impedance
+	X	Don't set it to anything (also used for outputs)
+*/
+
+char def_val [SIGNALS] = {
+
+'Z','Z','Z','Z','Z','Z','Z','Z',		/* address/data */
+'Z','Z','Z','Z','Z','Z','Z','Z',		/* address 8..15 */
+'Z','Z','Z','Z','Z','Z','Z','Z',		/* data 8..15 */
+'1',						/* rdl */
+'1',						/* wrL */
+'Z',						/* intr */
+'Z',						/* vsync */
+'Z',						/* hsync */
+'Z',						/* vib */
+'Z',						/* lcd[0] */
+'Z',						/* lcd[1] */
+
+'0','0','0','0',				/* address/status */
+'1',						/* reset */
+'0',						/* iom */
+'0',						/* ale */
+'0',						/* inta */
+'0',						/* hlda */
+'0',						/* xtal */
+'1','1','1','1',				/* analogue inputs */
+'1',						/* lp */
+
+'X','X','X','X','X','X','X','X',		/* address 8..15 */
+'X','X',					/* address 16..17 */
+'X',						/* pclk */
+'X',						/* hold */
+'X','X',					/* screen chip selects */
+'X',						/* weL */
+'X','X',					/* ROM chip selects */
+'X','X','X','X',				/* red */
+'X','X','X','X',				/* green */
+'X','X','X','X',				/* blue */
+'X',						/* chroma */
+'X','X','X','X',				/* pwm */
+'X','X',					/* joystick enables */
+'X',						/* lcd[2] */
+'X',						/* oel */
+'X'};						/* cas */

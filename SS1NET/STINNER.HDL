@@ -1,0 +1,185 @@
+(****************************************************************************
+stinner
+19/10/88
+
+Blitter Inner Loop State Machine
+
+****************************************************************************)
+
+IMPORT gates, latches, macros;
+
+DEF STINNER (borrow, cclk, colst, cycend, cycst, dam1L, dsten, 
+	icycend, icycst, ildpatL, inhib, inlp, inner0, iupddstL, 
+	iupdsrcL, lindr, res[0], reset, resume, sam1L, srcen, srcenf, 
+	sreset :IN;
+	addbackL, addbldL, dstwr, idstwr, inclkL, incrq, iquiet, lddstL, 
+	ldsrcL, srcltoh, srcrd, sswap, stop, upddstL, updsrcL, upsldL :IO);
+
+abt[0..1], abtL[0..1], cclkL, colstop, colstopL, cycendL, dam1, 
+drt[0..3], dut[0..1], dstenL, dstrd, dstrdL, dstwrL, dwt[0..5], idstrd, 
+iinclkL, ilddst, ildsrc, inclk, inlpL, inner0L, isrcrd, istop, ldsrct, ldsrctL, 
+lddst, ldtL, lht[0..2], lindrL, lstL, nibdifL, qt[0..1], quiet, quietL, 
+resumeL, sam1d, sam1dL, srcenL, srcenfL, srcltohL, srcrdL, sresetL, 
+srt[0..3], stldL, stldt, stopL, stt[0..2], sut[0..4], sutL[3..4], upddst, 
+updsrc :IO;
+
+BEGIN
+
+(* Invert inputs as required *)
+
+Cclkinv		:= INV1 (cclk, cclkL);
+CycendL		:= INV1 (cycend, cycendL);
+DstenL		:= INV1 (dsten, dstenL);
+InlpL		:= INV1 (inlp, inlpL);
+Inner0L		:= INV1 (inner0, inner0L);
+LindrL		:= INV1 (lindr, lindrL);
+ResumeL		:= INV1 (resume, resumeL);
+SrcenL		:= INV1 (srcen, srcenL);
+SrcenfL		:= INV1 (srcenf, srcenfL);
+SresetL		:= INV1 (sreset, sresetL);
+
+ColstopL	:= NAND2 (inhib, colst, colstopL);
+Colstop		:= INV1 (colstopL, colstop);
+
+(* Quiescent state of state machine - quiet *)
+
+Qt0		:= NAND2 (quiet, inlpL, qt[0]);
+Qt1		:= NAND3 (dstwr, cycend, inner0, qt[1]);
+Qt2		:= NAND2 (qt[0..1], iquiet);
+Quiet		:= DTLATCH1P (iquiet, cclk, sresetL, quiet, quietL);
+
+(* Source read cycle *)
+
+Srt0		:= NAND3 (quiet, inlp, srcenf, srt[0]);
+Srt1		:= NAND3 (quiet, inlp, srcen, srt[1]);
+Srt2		:= NAND2 (srcrd, cycendL, srt[2]);
+Srt3		:= NAND4 (dstwr, cycend, inner0L, srcen, srt[3]);
+Srt4		:= NAND4 (srt[0..3], isrcrd);
+Srcrd		:= DTLATCH1C (isrcrd, cclk, sresetL, srcrd, srcrdL);
+
+(* Destination read cycle *)
+
+Drt0		:= NAND5 (quiet, inlp, dsten, srcenL, srcenfL, drt[0]);
+Drt1		:= NAND3 (srcrd, cycend, dsten, drt[1]);
+Drt2		:= NAND2 (dstrd, cycendL, drt[2]);
+Drt3		:= NAND5 (dstwr, cycend, inner0L, srcenL, dsten, drt[3]);
+Drt4		:= NAND4 (drt[0..3], idstrd);
+Dstrd		:= DTLATCH1C (idstrd, cclk, sresetL, dstrd, dstrdL);
+
+(* Destination write cycle *)
+
+Dwt0		:= NAND5 (quiet, inlp, dstenL, srcenL, srcenfL, dwt[0]);
+Dwt1		:= NAND3 (dstrd, cycend, colstopL, dwt[1]);
+Dwt2		:= NAND4 (srcrd, cycend, dstenL, colstopL, dwt[2]);
+Dwt3		:= NAND2 (dstwr, cycendL, dwt[3]);
+Dwt4		:= NAND5 (dstwr, cycend, inner0L, dstenL, srcenL, dwt[4]);
+Dwt5		:= NAND2 (stop, resume, dwt[5]);
+Dwt6		:= NAND6 (dwt[0..5], idstwr);
+Dstwr		:= DTLATCH1C (idstwr, cclk, sresetL, dstwr, dstwrL);
+
+(* Collision stop state *)
+
+Stt0		:= NAND3 (dstrd, cycend, colstop, stt[0]);
+Stt1		:= NAND4 (srcrd, cycend, colstop, dstenL, stt[1]);
+Stt2		:= NAND2 (stop, resumeL, stt[2]);
+Stt3		:= NAND3 (stt[0..2], istop);
+Stop		:= DTLATCH1C (istop, cclk, sresetL, stop, stopL);
+
+(* Decodes from state *)
+
+(* Request a cycle for any of the three cycle types *)
+
+Incrq		:= OR3 (idstrd, isrcrd, idstwr, incrq);
+
+(* Inner count clock is a pulse one cycle long at the start of a destination
+   write cycle.  *)
+
+Inckgen		:= NAND2 (icycst, idstwr, iinclkL);
+Incklat		:= DTLATCH1 (iinclkL, cclk, inclkL, inclk);
+
+(* The source address register is updated in the last cycle of a source
+address read.  It is also updated in the first cycle of a destination
+write cycle in line draw mode, and can also be updated as part of the
+outer loop, given by iupdsrcL *)
+
+Sut[0]		:= NAND2 (srcrd, icycend, sut[0]);
+Sut[1]		:= NAND3 (idstwr, icycst, lindr, sut[1]);
+Sut[2]		:= NAND3 (iupdsrcL, sut[0..2]);
+Updsrc		:= DTLATCH1 (sut[2], cclk, updsrc, updsrcL);
+
+(* A load strobe is produced from this active only for the second
+half of the clock cycle.  This is because it can immediately follow
+the previous source update (the add back) as with addbldL *)
+
+Sut3		:= DTLATCH1 (updsrcL, cclkL, sutL[3], sut[3]);
+Sut4		:= DTLATCH1 (sut[3], cclk, sut[4], sutL[4]);
+UpsldL		:= NAND2 (sut[3], sutL[4], upsldL);
+
+(* The source address can also perfrom the local addback in line
+drawing mode.  This occurs on the last cycle of a line draw.  This
+is an asynchronous signal as borrow does not become true until
+after the first cycle of the write (which could immediately precede
+the last *)
+
+Addback		:= NAND4 (lindr, dstwr, borrow, cycend, addbackL);
+
+(* A load strobe is produced from this active only for the second
+half of the clock cycle.  This is because it can immediately follow
+the previous source update (the subtraction) *)
+
+Abd[0]		:= DTLATCH1 (addbackL, cclkL, abtL[0], abt[0]);
+Abt[1]		:= DTLATCH1 (abt[0], cclk, abt[1], abtL[1]);
+AddbldL		:= NAND2 (abt[0], abtL[1], addbldL);
+
+(* The destination address register update will always occur on
+the last cycle of the destination write cycle.  It can also occur
+in the outer loop, given by iupddstL *)
+
+Dut[0]		:= NAND2 (dstwr, icycend, dut[0]);
+Dut[1]		:= NAND2 (iupddstL, dut[0..1]);
+Upddst		:= DTLATCH1 (dut[1], cclk, upddst, upddstL);
+
+(* The source data register is loaded in the last cycle of the source
+read cycle, when the pattern data is loaded and also at reset *)
+
+Ldstrm		:= NAND3 (icycend, srcrd, lindrL, lstL);
+Ldsgen		:= NAND2 (ildpatL, lstL, ildsrc);
+Ldslatch	:= DTLATCH1 (ildsrc, cclk, ldsrct, ldsrctL);
+LdsrcL		:= NR2C (ldsrct, reset, ldsrcL);
+
+(* When the source data register is loading pattern data, it must load
+data from the low byte of the data bus into the high byte of the
+register *)
+
+Lht[0]		:= DTLATCH1 (ildpatL, cclk, lht[0], lht[1]);
+Lht[2]		:= NAND2 (ildpatL, lht[0], lht[2]);
+Srcltoh		:= DTLATCH1 (lht[2], cclk, srcltoh, srcltohL);
+
+(* The destination data register is loaded in the last cycle of the
+destination read cycle, and again also when pattern data is loaded *)
+
+Ldddec0		:= NAND2 (icycend, dstrd, ldtL);
+Ldtgen		:= NAND2 (ildpatL, ldtL, ilddst);
+Lddlatch	:= DTLATCH1 (ilddst, cclk, lddst, lddstL);
+
+(* The two halves of the source data byte nust be swapped in hires or lores
+if the -1 bits of the two addresses are different (given by nibdif, below).
+It is inhibited if character painting is performed (srcenf) *)
+
+Sswgen		:= NOR3 (nibdifL, res[0], srcenf, sswap);
+
+(* Generate nibdif
+This indicates that the nibble bits are different, and therefore the two
+halves of the source data need to be swapped.  This requires that the source
+address bit be latched at the start of the cycle as it may change part way 
+through an inner loop pass, when it is updated at the end of the source read
+cycle.  It is loaded in the first tick of a source read, and also when the
+state machine is inactive (in case there are no source reads) *)
+
+Stldt		:= AND2 (srcrd, cycst, stldt);
+StldL		:= NOR2 (stldt, quiet, stldL);
+Salatch		:= LD2A (sam1L, stldL, sam1dL, sam1d);
+Ainv		:= INV1 (dam1L, dam1);
+Ndgen		:= AOI (dam1L, sam1d, dam1, sam1dL, nibdifL);
+
+END

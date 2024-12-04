@@ -1,0 +1,107 @@
+COMPILE;
+DIRECTORY MASTER;
+/****************************************************************************
+stmem
+19/10/88
+
+State machine for the memory interface
+
+This state machine controls the blitter memory interface
+
+****************************************************************************/
+
+
+MODULE STMEM;
+
+INPUTS	ACKINT,CCLK,COMCRQ,IDSTWR,INCRQ,INHIB,PARCRQ,RESET,RES_0,RES_1,WAITL;
+OUTPUTS	CYCEND,CYCST,DATOEL,ICYCEND,ICYCST,INCYCL,PCEN,UPDPCL,BMREQ,BRD,BWR,
+   BWORD;
+LEVEL FUNCTION;
+DEFINE
+
+/* Invert inputs as required */
+
+CCLKL_(CCLKL) = N1A(CCLK);
+IDSTWRL_(IDSTWRL) = N1A(IDSTWR);
+RESETL_(RESETL) = N1A(RESET);
+WAITINV_(WAIT) = N1A(WAITL);
+
+/* Decode next state */
+
+CRQGEN_(CYCRQ) = OR3A(COMCRQ,PARCRQ,INCRQ);
+
+IMI_0_(IMI_0) = ND3A(MIL_0,CYCRQ,ACKINT);
+IMI_1_(IMI_1) = ND2A(MI_0,WAIT);
+IMI_2_(IMI_2) = ND2B(IMI_0,IMI_1);
+IMI_3_(IMI_3) = N1A(IMI_2);
+
+/* The state latches */
+
+MILATCH_0_(MI_0,MIL_0) = FD2A(IMI_2,CCLK,RESETL);
+MILATCH_1_(MI_1,MIL_1) = FD2A(MI_0,CCLK,RESETL);
+
+/* Decodes from state */
+
+/* mreq is given by T1 or TW, unless the cycle is a destination write and
+inhibit is active, in which case it is suppressed.  This allows the two
+tick timing of the memory interface to still be used during inhibited
+writes to update addresses 
+	mreq = mi[0] . /(dstwr . inhib) */
+
+MREQT_0_(MREQT_0) = ND2A(IDSTWR,INHIB);
+MREQT_1_(MREQT_1) = ND2A(IMI_2,MREQT_0);
+MREQT_2_(BMREQL,BMREQ) = FD1A(MREQT_1,CCLK);
+
+/* rd and wr are active in T1, TW and T2.  Do these by synchronous decode
+   rd = (mi[0] + mi[1]) . /idstwr
+   wr = (mi[0] + mi[1]) . idstwr . /inhib */
+RWT_0_(RWT_0) = NR2A(IMI_2,MI_0);
+RWT_1_(RWT_1) = NR2A(RWT_0,IDSTWR);
+RWT_2_(RWT_2) = NR3A(RWT_0,IDSTWRL,INHIB);
+RDFF_(BRD,BRDL) = FD1A(RWT_1,CCLK);
+WRFF_(BWR,BWRL) = FD1A(RWT_2,CCLK);
+
+/* word is active throughout the cycle for an inner loop generated memory
+cycle when word resolution is set
+	word := word . /cycend
+	      + icycst . incrq . res[0] . res[1] */
+
+WRDT_0_(WRDT_0) = ND2A(BWORD,CYCENDL);
+WRDT_1_(WRDT_1) = ND4A(ICYCST,INCRQ,RES_0,RES_1);
+WRDT_2_(WRDT_2) = ND2A(WRDT_0,WRDT_1);
+WRDT_3_(BWORD,BWORDL) = FD2A(WRDT_2,CCLK,RESETL);
+
+/* Cycle positions */
+
+CYCEGEN_(CYCEND) = NR2C(MIL_1,MI_0);
+CYCENDL_(CYCENDL) = N1A(CYCEND);
+CYCSGEN_(CYCST) = NR2A(MI_1,MIL_0);
+ICYCEGEN_(ICYCEND) = NR2C(MIL_0,IMI_2);
+ICYCENDL_(ICYCENDL) = N1A(ICYCEND);
+ICYCSTGEN_(ICYCST) = NR2C(IMI_3,MI_0);
+INCYCGEN_(INCYCL) = NR2A(MI_0,MI_1);
+
+/* Internal data output enable is given by wr, however data is not enabled
+for the first half tick of a write cycle  */
+
+IWRD_(IWRD,IWRDL) = FD1A(BWR,CCLKL);
+DATOEL_(DATOEL) = ND2A(BWR,IWRD);
+
+/* Blitter program address is enabled for a cycle requiested by comcrq or
+parcrq, and the blitter program address is updated during the last cycle of
+one of these memory cycles.
+	pcen := pcen . /cycend
+	       +icycst . (comcrq + parcrq) */
+
+PCNT_0_(PCNT_0) = OR2A(COMCRQ,PARCRQ);
+PCNT_1_(PCNT_1) = ND2A(ICYCST,PCNT_0);
+PCNT_2_(PCNT_2) = ND2A(PCEN,CYCENDL);
+PCNT_3_(PCNT_3) = ND2A(PCNT_1,PCNT_2);
+PCEN_(PCEN,PCENL) = FD2A(PCNT_3,CCLK,RESETL);
+
+PCNT_4_(PCNT_4) = ND2A(PCEN,ICYCEND);
+UPDPC_(UPDPCL,UPDPC) = FD1A(PCNT_4,CCLK);
+
+END MODULE;
+END COMPILE;
+END;

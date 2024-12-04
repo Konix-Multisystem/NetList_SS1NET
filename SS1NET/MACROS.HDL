@@ -1,0 +1,303 @@
+(**************************************************************************
+macros
+28/9/88
+
+This block contains useful macros missing from the Qudos library
+
+*************************************************************************)
+
+IMPORT gates;
+
+(* transparent latch gate model - active low gate *)
+
+DEF LD2A (d, enL:IN; q, qL:IO);
+
+dL, en :IO;
+
+BEGIN
+
+        En              := INV1 (enL, en);
+        Qdinv           := INV2 (d, q, dL, qL);
+        Q               := AOI (qL, enL, dL, en, q);
+
+END;
+
+(* transparent latch gate model - active high gate *)
+ 
+DEF LD1A (d, enin:IN; q, qL:IO);
+ 
+dL, en, enL :IO;
+ 
+BEGIN 
+ 
+        En              := INV2 (enin, enL, enL, en); 
+        Qdinv           := INV2 (d, q, dL, qL);
+        Q               := AOI (qL, enL, dL, en, q); 
+ 
+END; 
+
+(* non-inverting tri-state driver, active high enable *)
+
+DEF ZBUF1 (in, en :IN; out :TRI);
+
+inL :IO;
+
+BEGIN
+
+Ininv   := INV1 (in, inL);
+Drive   := ZINV1 (inL, en, out);
+
+END;
+DEF BTS4A (in, en :IN; out :TRI);
+
+inL :IO;
+
+BEGIN
+
+Ininv   := INV1 (in, inL);
+Drive   := ZINV1 (inL, en, out);
+
+END;
+
+(* two to one multiplexer *)
+
+DEF MUX2 (in1, sel1, in2, sel2 :IN; out :IO);
+
+i1, i2 :IO;
+
+BEGIN
+
+I1	:= NAND2 (in1, sel1, i1);
+I2	:= NAND2 (in2, sel2, i2);
+Out	:= NAND2 (i1, i2, out);
+
+END;
+
+(* LSI Logic two to one multiplexer cell,  inverting with local select 
+inverter *)
+
+DEF MX21LA (a, b, s :IN; z :IO);
+
+sL :IO;
+
+BEGIN
+
+SL	:= INV1 (s, sL);
+Mux	:= AOI (a, sL, b, s, z);
+
+END;
+
+(* 3 2 ANDs into 3 NOR - this is an LSI Logic macro *)
+
+DEF AO11A (a, b, c, d, e, f :IN; z :IO);
+
+g, h, i :IO;
+
+BEGIN
+
+G	:= AND2 (a, b, g);
+H	:= AND2 (c, d, h);
+I	:= AND2 (e, f, i);
+Z	:= NOR3 (g, h, i, z);
+
+END;
+
+(* One bit full adder *)
+ 
+DEF FULLADD (a, b, ci :IN; q, co :IO);
+ 
+aab, aabL, aobL, qt, qtL, ciL, cot :IO;
+ 
+BEGIN
+
+Aabgen          := NAND2 (a, b, aabL);
+Aobgen          := NOR2 (a, b, aobL);
+Aabinv          := INV1 (aabL, aab);
+Qtgen           := NOR2 (aab, aobL, qt);
+Qtciinv         := INV2 (qt, ci, qtL, ciL);
+Qgen            := AOI (qt, ci, qtL, ciL, q);
+Cotgen          := NOR2 (ci, aab, cot);
+Cogen           := NOR2 (cot, aobL, co);
+ 
+END;
+
+(* Half adder *)
+
+DEF HALFADD (a, b :IN; q, co :IO);
+
+BEGIN
+
+Q		:= XOR2 (a, b, q);
+Co		:= AND2 (a, b, co);
+
+END;
+
+(* Four stage full adder *)
+
+DEF FULLADD4 (a[0..3], b[0..3], ci :IN; q[0..3], co :IO);
+
+aab[1], aabL[0..3], aob[0..3], aobL[0..3], ciL,
+q0t[0..1], q1t[0..4], q2t[0..5], q3t[0..6], cot[0..3] :IO;
+
+BEGIN
+
+Aabgen[0-3]     := ND2B (a[0-3], b[0-3], aabL[0-3]);
+Aobgen[0-3]     := NR2B  (a[0-3], b[0-3], aobL[0-3]);
+Aabinv[0]       := INV1 (aabL[1], aab[1]);
+Aobinv[0]       := INV2 (aobL[0..1], aob[0..1]);
+Aobinv[2]       := INV2 (aobL[2..3], aob[2..3]);
+
+Q0t[0]          := NAND2 (aabL[0], aob[0], q0t[0]);
+Q0t[1]          := INV2 (ci, q0t[0], ciL, q0t[1]);
+Q[0]            := AOI (ci, q0t[1], ciL, q0t[0], q[0]);
+
+Q1t[0]          := NOR2 (aab[1], aobL[1], q1t[0]);
+Q1t[1]          := INV2 (q1t[0], q1t[3], q1t[1], q1t[4]);
+Q1t[2]          := NAND2 (aabL[0], ciL, q1t[2]);
+Q1t[3]          := NAND2 (aob[0], q1t[2], q1t[3]);
+Q[1]            := AOI (q1t[0],q1t[4],q1t[1],q1t[3],q[1]);
+ 
+Q2t[0]          := NAND2 (aabL[2], aob[2], q2t[0]);
+Q2t[1]          := NAND3 (aabL[1], aabL[0], ciL, q2t[1]);
+Q2t[2]          := NAND2 (aobL[0], aabL[1], q2t[2]);
+Q2t[3]          := NAND3 (aob[1], q2t[1..3]);
+Q2t[4]          := INV2 (q2t[3], q2t[0], q2t[4], q2t[5]);
+Q[2]            := AOI (q2t[3], q2t[0], q2t[4], q2t[5], q[2]);
+
+Q3t[0]          := NAND2 (aabL[3], aob[3], q3t[0]);
+Q3t[1]          := NAND4 (aabL[2], aabL[1], aabL[0], ciL, q3t[1]);
+Q3t[2]          := NAND3 (aabL[2], aabL[1], aobL[0], q3t[2]);
+Q3t[3]          := NAND2 (aabL[2], aobL[1], q3t[3]);
+Q3t[4]          := NAND4 (aob[2], q3t[1..4]);
+Q3t[5]          := INV2 (q3t[0], q3t[4], q3t[5], q3t[6]);
+Q[3]            := AOI (q3t[0], q3t[4], q3t[5], q3t[6], q[3]);
+ 
+Cot[0]          := NAND5 (aabL[3], aabL[2], aabL[1], aabL[0], ciL, cot[0]);
+Cot[1]          := NAND4 (aabL[3], aabL[2], aabL[1], aobL[0], cot[1]);
+Cot[2]          := NAND3 (aabL[3], aabL[2], aobL[1], cot[2]);
+Cot[3]          := NAND2 (aabL[3], aobL[2], cot[3]);
+Co              := AND5 (cot[0..3], aob[3], co);
+ 
+END;
+
+(* Four stage full adder with no carry output *)
+
+DEF FULLADD4NC (a[0..3], b[0..3], ci :IN; q[0..3] :IO);
+
+aab[1], aabL[0..3], aob[0..3], aobL[0..3], ciL,
+q0t[0..1], q1t[0..4], q2t[0..5], q3t[0..6] :IO;
+
+BEGIN
+
+Aabgen[0-3]     := NAND2 (a[0-3], b[0-3], aabL[0-3]);
+Aobgen[0-3]     := NOR2  (a[0-3], b[0-3], aobL[0-3]);
+Aabinv[0]       := INV1 (aabL[1], aab[1]);
+Aobinv[0]       := INV2 (aobL[0..1], aob[0..1]);
+Aobinv[2]       := INV2 (aobL[2..3], aob[2..3]);
+
+Q0t[0]          := NAND2 (aabL[0], aob[0], q0t[0]);
+Q0t[1]          := INV2 (ci, q0t[0], ciL, q0t[1]);
+Q[0]            := AOI (ci, q0t[1], ciL, q0t[0], q[0]);
+
+Q1t[0]          := NOR2 (aab[1], aobL[1], q1t[0]);
+Q1t[1]          := INV2 (q1t[0], q1t[3], q1t[1], q1t[4]);
+Q1t[2]          := NAND2 (aabL[0], ciL, q1t[2]);
+Q1t[3]          := NAND2 (aob[0], q1t[2], q1t[3]);
+Q[1]            := AOI (q1t[0],q1t[4],q1t[1],q1t[3],q[1]);
+ 
+Q2t[0]          := NAND2 (aabL[2], aob[2], q2t[0]);
+Q2t[1]          := NAND3 (aabL[1], aabL[0], ciL, q2t[1]);
+Q2t[2]          := NAND2 (aobL[0], aabL[1], q2t[2]);
+Q2t[3]          := NAND3 (aob[1], q2t[1..3]);
+Q2t[4]          := INV2 (q2t[3], q2t[0], q2t[4], q2t[5]);
+Q[2]            := AOI (q2t[3], q2t[0], q2t[4], q2t[5], q[2]);
+
+Q3t[0]          := NAND2 (aabL[3], aob[3], q3t[0]);
+Q3t[1]          := NAND4 (aabL[2], aabL[1], aabL[0], ciL, q3t[1]);
+Q3t[2]          := NAND3 (aabL[2], aabL[1], aobL[0], q3t[2]);
+Q3t[3]          := NAND2 (aabL[2], aobL[1], q3t[3]);
+Q3t[4]          := NAND4 (aob[2], q3t[1..4]);
+Q3t[5]          := INV2 (q3t[0], q3t[4], q3t[5], q3t[6]);
+Q[3]            := AOI (q3t[0], q3t[4], q3t[5], q3t[6], q[3]);
+ 
+END;
+
+(* Define a loadable synchronous counter element for a down counter
+        Qold    Cin  |  Qnew    Cout
+        -------------+--------------
+        0       0    |  1       0
+        0       1    |  0       1
+        1       0    |  0       1
+        1       1    |  1       1
+ 
+ *)
+ 
+DEF LSCNTEL (d, ld, ldL, clk, ci, rstL :IN; q, qL, co :IO);
+ 
+qnt[0..1] :IO;
+ 
+BEGIN
+ 
+Co              := OR2 (ci, q, co);
+Qnt[0]          := XNOR2 (ci, q, qnt[0]);
+Qnt[1]          := MUX2 (ldL, qnt[0], ld, d, qnt[1]);
+Qff             := DTLATCH1C (qnt[1], clk, rstL, q, qL);
+ 
+END;
+
+(* Ben's macros *)
+DEF TPLATCH1 (D,EB:IN; Q:IO);
+ 
+(*
+   transparent latch gate model - Active high enable
+*)
+
+one, two,three: IO;
+BEGIN
+    one := INV1 (EB, one);
+    two := NAND2 (D, EB, two);
+    three := NAND2 (one, Q, three);
+    four := NAND2 (two, three, Q);
+END;
+
+(* Model LSI Logic Macros *)
+
+DEF NR2B (a,b :IN; q :IO);
+BEGIN
+One := NOR2 (a,b,q);
+END;
+
+DEF NR2C (a,b :IN; q :IO);
+BEGIN
+One := NOR2 (a,b,q);
+END;
+
+DEF ND2C (a,b :IN; q :IO);
+BEGIN
+One := NAND2 (a,b,q);
+END;
+
+DEF ND2B (a,b :IN; q :IO);
+BEGIN
+One := NAND2 (a,b,q);
+END;
+
+DEF ND3C (a,b,c :IN; q :IO);
+BEGIN
+One := NAND3 (a,b,c,q);
+END;
+
+DEF N1B (a :IN; q :IO);
+BEGIN
+One := INV1 (a,q);
+END;
+
+DEF N1C (a :IN; q :IO);
+BEGIN
+One := INV1 (a,q);
+END;
+
+DEF N1D (a :IN; q :IO);
+BEGIN
+One := INV1 (a,q);
+END;

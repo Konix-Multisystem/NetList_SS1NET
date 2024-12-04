@@ -1,0 +1,124 @@
+(****************************************************************************
+buscon
+20/10/88
+
+Bus Control and IO decoding
+
+****************************************************************************)
+
+IMPORT gates, latches, macros;
+
+DEF BUSCON (a[0..4], bcsL, hldaL, dspbrqL, id[0], intL, 
+	iordL, iowrL, incycL, reset, run, stop :IN; 
+	ackint, bholdL, busoe, cmdwrL, conwrL, dspbakL, dstrdL[0..2], 
+	incrdL, outcrdL, pcwrL[0..2], srcrdL[0..2], strd, testwrL :IO;
+	d[0], d[3..7] :TRI);
+
+aL[0..4], brd, bwr, busreq, busreqL, cbrqt, conwrtL, dspbrq, dspbak, fint, 
+fintL, imask, imaskL, incyc, istopL, outcrdt, pcwrtL[0..2], resetL, stopL, 
+strdL, testwrtL  :IO;
+
+BEGIN
+
+Incycinv	:= INV1 (incycL, incyc);
+Dspbrqinv	:= INV1 (dspbrqL, dspbrq);
+ResetL		:= INV1 (reset, resetL);
+StopL		:= INV1 (stop, stopL);
+
+(* Internal bus reques busreq occurs as soon as the run bit is set, and
+is disabled if the inner loop goes into its stop state *)
+
+BusreqL		:= NAND2 (run, stopL, busreqL);
+Busreq		:= INV1 (busreqL, busreq);
+
+(* Interrupts are filtered by the imask flag *)
+
+Fint		:= NOR2 (intL, imask, fint);
+FintL		:= INV1 (fint, fintL);
+
+(* CPU Bus Request *)
+
+Cbrqt		:= NAND2 (fintL, busreq, cbrqt);
+Cbrqgen		:= AND3 (dspbrqL, incycL, cbrqt, bholdL);
+
+(* DSP Bus Acknowledge *)
+
+Dbagen		:= NOR3 (dspbrqL, hldaL, incyc, dspbak);
+DspbakL		:= INV1 (dspbak, dspbakL);
+
+(* Internal Acknowledge *)
+
+Iakgen		:= NOR4 (dspbrq, hldaL, fint, busreqL, ackint);
+
+(* The address is enabled onto the bus whenever a hold acknowlwdge is
+received (even if not requested!), unless the DSP owns the bus.  This
+is given by:
+	busoe = hlda . /dspbak  *)
+
+Busoe		:= NR2B (hldaL, dspbak, busoe);
+
+(* IO Decoding 
+Blitter IO is given by a chip select signal bcsL, and iordL and iowrL
+control lines.  The blitter has 32 IO locations available to it, not
+all of which are used.  So that there are no un-acknowledged locations,
+which would leave the bus undriven, the outer counter address decode
+is expanded to fill the available IO space. 
+	A43210
+	 00000	Destination byte 0 read / Program byte 0 write
+	 00001	Destination byte 1 read / Program byte 1 write
+	 00010	Destination byte 2 read / Program byte 2 write
+	 00011	Source byte 0 read / Command register write
+	 00100	Source byte 1 read / Control register write
+	 00101	Source byte 2 read
+	 00110	Status read
+	 00111	Inner counter read
+	 x1xxx }Outer counter read
+	 1xxxx }
+	 11111	Test mode register write (used at top level) 
+*)
+
+Ainv[0-4]	:= N1B (a[0-4], aL[0-4]);
+Brd		:= NOR2 (bcsL, iordL, brd);
+Bwr		:= NOR2 (bcsL, iowrL, bwr);
+
+DstrdL[0]	:= NAND6 (aL[0], aL[1], aL[2], aL[3], aL[4], brd, dstrdL[0]);
+DstrdL[1]	:= NAND6 (a[0],  aL[1], aL[2], aL[3], aL[4], brd, dstrdL[1]);
+DstrdL[2]	:= NAND6 (aL[0], a[1],  aL[2], aL[3], aL[4], brd, dstrdL[2]);
+SrcrdL[0]	:= NAND6 (a[0],  a[1],  aL[2], aL[3], aL[4], brd, srcrdL[0]);
+SrcrdL[1]	:= NAND6 (aL[0], aL[1], a[2],  aL[3], aL[4], brd, srcrdL[1]);
+SrcrdL[2]	:= NAND6 (a[0],  aL[1], a[2],  aL[3], aL[4], brd, srcrdL[2]);
+StrdL		:= NAND6 (aL[0], a[1],  a[2],  aL[3], aL[4], brd, strdL);
+IncrdL		:= NAND6 (a[0],  a[1],  a[2],  aL[3], aL[4], brd, incrdL);
+Outcrdt		:= NAND2 (aL[3..4], outcrdt);
+OutcrdL		:= NAND2 (outcrdt, brd, outcrdL);
+
+PcwrtL[0]	:= NAND6 (aL[0], aL[1], aL[2], aL[3], a[4],  bwr, pcwrtL[0]);
+PcwrtL[1]	:= NAND6 (a[0],  aL[1], aL[2], aL[3], a[4],  bwr, pcwrtL[1]);
+PcwrtL[2]	:= NAND6 (aL[0], a[1],  aL[2], aL[3], a[4],  bwr, pcwrtL[2]);
+PcwrL[0-2]	:= AND2 (pcwrtL[0-2], resetL, pcwrL[0-2]);
+
+CmdwrL		:= NAND6 (a[0],  a[1],  aL[2], aL[3], a[4],  bwr, cmdwrL);
+ConwrtL		:= NAND6 (aL[0], aL[1], a[2],  aL[3], a[4],  bwr, conwrtL);
+ConwrL		:= AND2 (conwrtL, resetL, conwrL);
+
+TestwrtL	:= NAND6 (a[0..4], bwr, testwrtL);
+TestwrL		:= AND2 (testwrtL, resetL, testwrL);
+
+(* The blitter status read port (part of) *)
+
+Strd		:= INV1 (strdL, strd);
+
+(* Interrupt stop is true if run is active, int is active and bus hold 
+is inactive *)
+IstopL		:= NAND3 (run, fint, bholdL, istopL);
+Stat[0]		:= ZINV1 (istopL, strd, d[0]);
+
+Stat[3-7]	:= ZINV1 (strd, strd, d[3-7]);
+
+(* The blitter control register.  The remainder of this register lies 
+within the state block *)
+
+Imask		:= LD2A (id[0], conwrL, imask, imaskL);
+
+END
+

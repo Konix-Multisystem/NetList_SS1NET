@@ -1,0 +1,192 @@
+COMPILE;
+DIRECTORY MASTER;
+/********************************************************
+*	vtim-hdl					*
+*	2/11/88						*
+********************************************************/
+
+/*
+This module provides the video timing in the SLIPSTREAM chip on the ACW
+*/
+
+
+
+
+MODULE VTIM;
+
+INPUTS	RESETL_0,CLK,WD_0,WD_1,WD_2,WD_3,WD_4,WD_5,WD_6,WD_7,MODE_0,MODE_1,
+   SCRL_0,SCRL_1,SCRL_2,VVACTIVE,HVACTIVE,VSTART,HC_0,HC_1,HC_2,HC_3,HD1,PSUEDO,
+   HVHOLD,NOWRAP;
+OUTPUTS	VBUSYL_0,VBUSYL_1,VCS,VOE,VCAS,VRAS,SAEN,SA_0,SA_1,SA_2,SA_3,SA_4,SA_5,
+   SA_6,SA_7,SA_8,SA_9,SA_10,SA_11,SA_12,SA_13,SA_14,SA_15,SA_16,SA_17,VHOLDL,
+   PIXLD_0,PIXLD_1,PIXAD_0,PIXAD_1;
+LEVEL FUNCTION;
+DEFINE
+
+/* the scroll registers */
+
+
+SCR_1_(SCR_1,SCRB_1) = LD1A(WD_1,SCRL_0);
+SCR_2_(SCR_2,SCRB_2) = LD1A(WD_2,SCRL_0);
+SCR_3_(SCR_3,SCRB_3) = LD1A(WD_3,SCRL_0);
+SCR_4_(SCR_4,SCRB_4) = LD1A(WD_4,SCRL_0);
+SCR_5_(SCR_5,SCRB_5) = LD1A(WD_5,SCRL_0);
+SCR_6_(SCR_6,SCRB_6) = LD1A(WD_6,SCRL_0);
+SCR_7_(SCR_7,SCRB_7) = LD1A(WD_7,SCRL_0);
+SCR_8_(SCR_8,SCRB_8) = LD1A(WD_0,SCRL_1);
+SCR_9_(SCR_9,SCRB_9) = LD1A(WD_1,SCRL_1);
+SCR_10_(SCR_10,SCRB_10) = LD1A(WD_2,SCRL_1);
+SCR_11_(SCR_11,SCRB_11) = LD1A(WD_3,SCRL_1);
+SCR_12_(SCR_12,SCRB_12) = LD1A(WD_4,SCRL_1);
+SCR_13_(SCR_13,SCRB_13) = LD1A(WD_5,SCRL_1);
+SCR_14_(SCR_14,SCRB_14) = LD1A(WD_6,SCRL_1);
+SCR_15_(SCR_15,SCRB_15) = LD1A(WD_7,SCRL_1);
+SCR_16_(SCR_16,SCRB_16) = LD1A(WD_0,SCRL_2);
+SCR_17_(SCR_17,SCRB_17) = LD1A(WD_1,SCRL_2);
+
+/* the pixel address counters */
+/* the counter is organised as either:- 6 + 11 or 7 + 10 bits depending on
+the resolution.*/
+/* NB the LSB of the screen address is always zero */
+
+RES_(RES) = N1B(RESETL_0);
+RESL_(RESL) = N1A(RES);
+VSTARTL_(VSTARTL) = N1A(VSTART);
+
+/* The counter is loaded either at the top of the screen or
+at the begining of the line after scrl2 is written */
+
+SCRLL_2_(SCRLL_2) = N1A(SCRL_2);
+NEWSCROLL_(NEWSCROLL,NEWSCROLLL) = SR(SCRLL_2,LOADL);
+UPDATEL_(UPDATEL) = ND2A(HD1,NEWSCROLL);
+LOAD_(LOAD) = ND2A(UPDATEL,VSTARTL);
+LOADL_(LOADL) = N1B(LOAD);
+
+SA_0_(SA_0) = B3A(RES);
+SA_1_(SA_1,SAB_1,CO_1) = SYNCNT(SCR_1,CLK,RES,LOADL,LINC);
+SA_2_(SA_2,SAB_2,CO_2) = SYNCNT(SCR_2,CLK,RES,LOADL,CO_1);
+SA_3_(SA_3,SAB_3,CO_3) = SYNCNT(SCR_3,CLK,RES,LOADL,CO_2);
+SA_4_(SA_4,SAB_4,CO_4) = SYNCNT(SCR_4,CLK,RES,LOADL,CO_3);
+SA_5_(SA_5,SAB_5,CO_5) = SYNCNT(SCR_5,CLK,RES,LOADL,CO_4);
+SA_6_(SA_6,SAB_6,CO_6) = SYNCNT(SCR_6,CLK,RES,LOADL,CO_5);
+
+SA_7_(SA_7,SAB_7,CO_7) = SYNCNT(SCR_7,CLK,RES,LOADL,EN_7);
+SA_8_(SA_8,SAB_8,CO_8) = SYNCNT(SCR_8,CLK,RES,LOADL,EN_8);
+
+SA_9_(SA_9,SAB_9,CO_9) = SYNCNT(SCR_9,CLK,RES,LOADL,CO_8);
+SA_10_(SA_10,SAB_10,CO_10) = SYNCNT(SCR_10,CLK,RES,LOADL,CO_9);
+SA_11_(SA_11,SAB_11,CO_11) = SYNCNT(SCR_11,CLK,RES,LOADL,CO_10);
+SA_12_(SA_12,SAB_12,CO_12) = SYNCNT(SCR_12,CLK,RES,LOADL,CO_11);
+SA_13_(SA_13,SAB_13,CO_13) = SYNCNT(SCR_13,CLK,RES,LOADL,CO_12);
+SA_14_(SA_14,SAB_14,CO_14) = SYNCNT(SCR_14,CLK,RES,LOADL,CO_13);
+SA_15_(SA_15,SAB_15,CO_15) = SYNCNT(SCR_15,CLK,RES,LOADL,CO_14);
+
+/* the screen may or may not wrap around 64k boundary */
+
+NOWRAP_(INC) = AND2A(CO_15,NOWRAP);
+SA_16_(SA_16,SAB_16,CO_16) = SYNCNT(SCR_16,CLK,RES,LOADL,INC);
+SAL_17_(SA_17,SAB_17,CO_17) = SYNCNT(SCR_17,CLK,RES,LOADL,CO_16);
+
+ENL_7_(ENL_7) = AO2A(LORES,HINC,LORESL,CO_6);
+ENL_8_(ENL_8) = AO2A(LORES,CO_7,LORESL,HINC);
+EN_7_(EN_7) = N1A(ENL_7);
+EN_8_(EN_8) = N1A(ENL_8);
+
+/* identify when the video mechanism is active */
+/* vvactive is asserted for all lines in the picture and for refresh */
+/* hvactive is leads border by eight ticks */
+/* in low res the video mechanism is only active half the time */
+
+LORES_(LORES) = NR2A(MODE_0,MODE_1);
+LOACTIVE_(LOACTIVE) = ND2A(LORES,HC_3);
+ACTIVEL_(ACTIVEL) = ND3A(VVACTIVE,HVACTIVE,LOACTIVE);
+ACTIVE_(ACTIVE) = N1C(ACTIVEL);
+
+/* the low screen address counter is incremented
+when hc[0..2] is five or seven */
+
+LINC_(LINC) = AND3A(HC_0,HC_2,ACTIVE);
+
+/* the high screen address counter is incremented every line */
+
+HINC_(HINC) = AND2A(HD1,VVACTIVE);
+
+/* vbusy[0] signals that ROM/DRAM cycles may not begin.
+It is asserted from 1 to 7 */
+/* vbusy[1] signals that SRAM/PSRAM cycles may not begin.
+It is asserted from 3 to 7 */
+
+HCB_0_(HCB_0) = N1C(HC_0);
+HCB_1_(HCB_1) = N1C(HC_1);
+HCB_2_(HCB_2) = N1C(HC_2);
+HCB_3_(HCB_3) = N1C(HC_3);
+
+ZERO_(ZEROL) = ND3A(HCB_0,HCB_1,HCB_2);
+THREE_(THREE) = NR3A(HCB_0,HCB_1,HC_2);
+THREEL_(THREEL) = ND2A(HC_0,HC_1);
+FOUR_(FOUR) = NR3A(HC_0,HC_1,HCB_2);
+FIVE_(FIVE) = NR3A(HCB_0,HC_1,HCB_2);
+SIX_(SIX) = NR3A(HC_0,HCB_1,HCB_2);
+
+DEC37L_(DEC37) = ND2A(THREEL,HCB_2);
+VBUSYL_0_(VBUSYL_0) = ND2C(ZEROL,ACTIVE);
+
+VBUSY_1_(VBUSYL_1) = ND2C(DEC37,ACTIVE);
+
+/* pixld[0] & pixld[1] follow each other and must be glitch free */
+
+DEC34L_(DEC34L) = NR2A(THREE,FOUR);
+PIXLDD_0_(PIXLDD_0) = OR2A(DEC34L,ACTIVEL);
+PIXLD_0_(PIXLD_0,PIXLDL_0) = FD2A(PIXLDD_0,CLK,RESL);
+DEC56L_(DEC56L) = NR2A(FIVE,SIX);
+PIXLDD_1_(PIXLDD_1) = OR2A(DEC56L,ACTIVEL);
+PIXLD_1_(PIXLD_1,PIXLDL_1) = FD2A(PIXLDD_1,CLK,RESL);
+
+
+/* the screen address is enabled during counts 4 to 7 */
+
+SAEN_(SAEN) = NR2C(ACTIVEL,HCB_2);
+
+/* the pixel number depends on the mode */
+
+LORESL_(LORESL) = N1A(LORES);
+PIXADL_0_(PIXADL_0) = AO2B(LORES,HC_2,LORESL,HC_1);
+PIXADL_1_(PIXADL_1) = AO2B(LORES,HCB_3,LORESL,HC_2);
+PIXAD_0_(PIXAD_0) = B1A(PIXADL_0);
+PIXAD_1_(PIXAD_1) = B1A(PIXADL_1);
+
+/* generate timing for PSRAM chip enable */
+
+DEC46L_(DEC46L) = NR2A(FOUR,SIX);
+
+/* sample decode with two phases of the clock to get a pulse of 1.66 ticks */
+
+CLKL_(CLKL) = N1C(CLK);
+VCS_0_(VCSL_0,VCS_0) = FD2A(DEC46L,CLKL,RESL);
+VCS_1_(VCSL_1,VCS_1) = FD2A(DEC46L,CLK,RESL);
+
+/* the type of screen ram determines the timing */
+
+STATIC_(STATIC) = N1A(PSUEDO);
+SAENL_(SAENL) = N1A(SAEN);
+
+VCST_0_(VCST_0) = ND2A(VCS_0,SAEN);
+VCST_1_(VCST_1) = ND2A(VCS_1,SAEN);
+VCS_(VCS) = ND2A(VCST_0,VCST_1);
+VOE_(VOE) = ND2A(VCST_0,VCST_1);
+
+/* vholdL is asserted ahead of video fetch */
+
+VHOLDL_(VHOLDL) = ND2A(HVHOLD,VVACTIVE);
+
+/* vcas and vras are generated from 17Mhz clock */
+
+DEC45L_(DEC45L) = NR2A(FOUR,FIVE);
+DEC45A_(DEC45A) = NR2A(DEC45L,ACTIVEL);
+VCAS_(VCAS,VCASL) = FD2A(DEC45A,CLKL,RESL);
+VRAS_(VRAS,VRASL) = FD2A(VCAS,CLKL,RESL);
+
+
+END MODULE;
+END COMPILE;
+END;

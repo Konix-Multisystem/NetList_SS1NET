@@ -1,0 +1,65 @@
+(****************************************************************************
+blit
+19/10/88
+
+Top level of the blitter module
+
+****************************************************************************)
+
+IMPORT data, addr, state, buscon;
+
+DEF BLIT (resetL, hldaL, dspbrqL, intL, iordL, iowrL, bcsL, cclk, 
+	waitL :IN;
+	bmreq, brd, bwr, bword, dspbakL, bholdL, testwrL :IO;
+	a[0..19], d[0..15] :TRI);
+
+ackint, addbackL, addbldL, adstp, borrow, busoe, cmdwrL, conwrL, dam1L, 
+datoeL, dstcmp, dstrdL[0..2], icnt[0..2], id[0..15], incrdL, incycL, inhib, 
+ldcmpL, lddaL[0..2], lddstL, ldmodL, ldpatL, ldsaL[0..2], ldsrcL, ldstpL, 
+lindr, outcrdL, pcen, pcwrL[0..2], reset, res[0..1], run, sam1L, sdasel, 
+srccmp, srcenf, srcltoh, srcrd, srcrdL[0..2], sswap, stop, strd, upddstL, 
+updpcL, updsrcL, upsldL :IO;
+
+BEGIN
+
+(* The data path *)
+
+Data		:= DATA (dam1L, datoeL, dstcmp, icnt[0..2], id[0..15], 
+			ldcmpL, lddstL, ldpatL, ldmodL, ldsrcL, res[0], 
+			sswap, srccmp, srcltoh,  inhib, d[0..15]);
+
+(* The address generator *)
+
+Addr		:= ADDR (addbackL, addbldL, adstp, busoe, srcenf, 
+			dstrdL[0..2], id[0..7], lddaL[0..2], ldsaL[0..2], 
+			ldstpL, ldmodL, lindr, pcen, pcwrL[0..2], 
+			res[0..1], run, sdasel, srcrd, srcrdL[0..2], 
+			upddstL, updpcL, updsrcL, upsldL, borrow, dam1L, 
+			dstcmp, sam1L, srccmp, a[0..19], d[0..7]);
+
+(* The state machine and control logic *)
+
+State		:= STATE (ackint, borrow, cclk, cmdwrL, conwrL, 
+			dam1L, id[0..7], incrdL, inhib, outcrdL, reset, 
+			sam1L, strd, waitL, addbackL, addbldL, adstp, datoeL, 
+			icnt[0..2], incycL, ldcmpL, lddaL[0..2], lddstL, 
+			ldmodL, ldpatL, ldsaL[0..2], ldsrcL, ldstpL, lindr, 
+			pcen, res[0..1], run, sdasel, srcenf, srcltoh, srcrd, 
+			sswap, stop, upddstL, updpcL, updsrcL, upsldL, bmreq, 
+			brd, bwr, bword, d[0..7]);
+        
+(* The bus control and decode logic *)
+
+Buscon		:= BUSCON (a[0..4], bcsL, hldaL, dspbrqL, id[0], intL, 
+			iordL, iowrL, incycL, reset, run, stop, ackint, 
+			bholdL, busoe, cmdwrL, conwrL, dspbakL, dstrdL[0..2], 
+			incrdL, outcrdL, pcwrL[0..2], srcrdL[0..2], strd, 
+			testwrL, d[0], d[3..7]);
+
+(* Locally invert some inputs, and buffer to keep fanouts down *)
+
+Resetinv	:= N1B (resetL, reset);
+Dbuf[0-15]	:= BUF1 (d[0-15], id[0-15]);
+
+END
+

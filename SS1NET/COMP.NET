@@ -1,0 +1,156 @@
+COMPILE;
+DIRECTORY MASTER;
+/****************************************************************************
+comp
+15/10/88
+
+Blitter data comparator
+
+****************************************************************************/
+
+
+MODULE COMP;
+
+INPUTS	DSTCMP,ID_0,ID_1,ID_2,ID_3,LDCMPL,LDMODL,SRCD_0,SRCD_1,SRCD_2,SRCD_3,
+   SRCD_4,SRCD_5,SRCD_6,SRCD_7,DSTD_0,DSTD_1,DSTD_2,DSTD_3,DSTD_4,DSTD_5,DSTD_6,
+   DSTD_7,PATD_0,PATD_1,PATD_2,PATD_3,PATD_4,PATD_5,PATD_6,PATD_7,ICNT_0,ICNT_1,
+   ICNT_2,DAM1L,RES_0,SRCCMP;
+OUTPUTS	INHIB;
+LEVEL FUNCTION;
+DEFINE
+
+RESL_0_(RESL_0) = N1A(RES_0);
+
+/* The comparator control register */
+
+LFUCL0_(CMPEQ,CMPEQL) = LD2A(ID_0,LDCMPL);
+LFUCL1_(CMPNE,CMPNEL) = LD2A(ID_1,LDCMPL);
+LFUCL2_(CMPGT,CMPGTL) = LD2A(ID_2,LDCMPL);
+LFUCL4_(CMPPLN,CMPPLNL) = LD2A(ID_3,LDCMPL);
+LFUCL5_(CMPBIT,CMPBITL) = LD2A(ID_2,LDMODL);
+
+/* Select between source/pattern and destination/pattern data according to
+the srccmp and dstcmp control bits */
+
+SRCSEL_0_(SDL_0) = MX21LB(PATD_0,SRCD_0,SRCCMP);
+SRCSEL_1_(SDL_1) = MX21LB(PATD_1,SRCD_1,SRCCMP);
+SRCSEL_2_(SDL_2) = MX21LB(PATD_2,SRCD_2,SRCCMP);
+SRCSEL_3_(SDL_3) = MX21LB(PATD_3,SRCD_3,SRCCMP);
+SRCSEL_4_(SDL_4) = MX21LB(PATD_4,SRCD_4,SRCCMP);
+SRCSEL_5_(SDL_5) = MX21LB(PATD_5,SRCD_5,SRCCMP);
+SRCSEL_6_(SDL_6) = MX21LB(PATD_6,SRCD_6,SRCCMP);
+SRCSEL_7_(SDL_7) = MX21LB(PATD_7,SRCD_7,SRCCMP);
+DSTSEL_0_(DDL_0) = MX21LB(PATD_0,DSTD_0,DSTCMP);
+DSTSEL_1_(DDL_1) = MX21LB(PATD_1,DSTD_1,DSTCMP);
+DSTSEL_2_(DDL_2) = MX21LB(PATD_2,DSTD_2,DSTCMP);
+DSTSEL_3_(DDL_3) = MX21LB(PATD_3,DSTD_3,DSTCMP);
+DSTSEL_4_(DDL_4) = MX21LB(PATD_4,DSTD_4,DSTCMP);
+DSTSEL_5_(DDL_5) = MX21LB(PATD_5,DSTD_5,DSTCMP);
+DSTSEL_6_(DDL_6) = MX21LB(PATD_6,DSTD_6,DSTCMP);
+DSTSEL_7_(DDL_7) = MX21LB(PATD_7,DSTD_7,DSTCMP);
+SDINV_0_(SD_0) = N1A(SDL_0);
+SDINV_1_(SD_1) = N1A(SDL_1);
+SDINV_2_(SD_2) = N1A(SDL_2);
+SDINV_3_(SD_3) = N1A(SDL_3);
+SDINV_4_(SD_4) = N1A(SDL_4);
+SDINV_5_(SD_5) = N1A(SDL_5);
+SDINV_6_(SD_6) = N1A(SDL_6);
+SDINV_7_(SD_7) = N1A(SDL_7);
+DDINV_0_(DD_0) = N1A(DDL_0);
+DDINV_1_(DD_1) = N1A(DDL_1);
+DDINV_2_(DD_2) = N1A(DDL_2);
+DDINV_3_(DD_3) = N1A(DDL_3);
+DDINV_4_(DD_4) = N1A(DDL_4);
+DDINV_5_(DD_5) = N1A(DDL_5);
+DDINV_6_(DD_6) = N1A(DDL_6);
+DDINV_7_(DD_7) = N1A(DDL_7);
+
+/* Generate the pixel equal inhibit term
+   This corresponds to the whole byte in lores, or one nybble of it in
+   hires or lores.  The selection is made on the res[0] flag and the nybble bit
+   of the destination address.  If cmppln is clear then an inhibit may
+   be generated on byte not equal or byte equal. */
+
+NEQ_0_(SEQ_0) = AO2B(SD_0,DD_0,SDL_0,DDL_0);
+NEQ_1_(SEQ_1) = AO2B(SD_1,DD_1,SDL_1,DDL_1);
+NEQ_2_(SEQ_2) = AO2B(SD_2,DD_2,SDL_2,DDL_2);
+NEQ_3_(SEQ_3) = AO2B(SD_3,DD_3,SDL_3,DDL_3);
+NEQ_4_(SEQ_4) = AO2B(SD_4,DD_4,SDL_4,DDL_4);
+NEQ_5_(SEQ_5) = AO2B(SD_5,DD_5,SDL_5,DDL_5);
+NEQ_6_(SEQ_6) = AO2B(SD_6,DD_6,SDL_6,DDL_6);
+NEQ_7_(SEQ_7) = AO2B(SD_7,DD_7,SDL_7,DDL_7);
+LEQGEN_(LEQ) = NR4A(SEQ_0,SEQ_1,SEQ_2,SEQ_3);
+HEQGEN_(HEQ) = NR4B(SEQ_4,SEQ_5,SEQ_6,SEQ_7);
+EQT0G_(EQT_0) = ND3B(RES_0,LEQ,HEQ);
+EQT1G_(EQT_1) = ND3B(RESL_0,DAM1L,LEQ);
+EQT2G_(EQT_2) = ND3B(RESL_0,DAM1,HEQ);
+EQGEN_(BEQ) = ND3B(EQT_0,EQT_1,EQT_2);
+BEQINV_(BEQL) = N1B(BEQ);
+
+/* Generate bit selection term
+   This allows an inhibit to be generated based on one bit of the source
+   data register, selected by the inner counter value. */
+
+ICNTINV_0_(ICNTL_0) = N1A(ICNT_0);
+ICNTINV_1_(ICNTL_1) = N1A(ICNT_1);
+ICNTINV_2_(ICNTL_2) = N1A(ICNT_2);
+TRM3_(TRM3) = N1A(SEQ_7);
+BITG0_(BITG_0) = ND4A(ICNTL_2,ICNTL_1,ICNTL_0,SDL_0);
+BITG1_(BITG_1) = ND4A(ICNT_2,ICNT_1,ICNT_0,SDL_1);
+BITG2_(BITG_2) = ND4A(ICNT_2,ICNT_1,ICNTL_0,SDL_2);
+BITG3_(BITG_3) = ND4A(ICNT_2,ICNTL_1,ICNT_0,SDL_3);
+BITG4_(BITG_4) = ND4A(ICNT_2,ICNTL_1,ICNTL_0,SDL_4);
+BITG5_(BITG_5) = ND4A(ICNTL_2,ICNT_1,ICNT_0,SDL_5);
+BITG6_(BITG_6) = ND4A(ICNTL_2,ICNT_1,ICNTL_0,SDL_6);
+BITG7_(BITG_7) = ND4A(ICNTL_2,ICNTL_1,ICNT_0,SDL_7);
+BITGEN_(BIT) = ND8A(BITG_0,BITG_1,BITG_2,BITG_3,BITG_4,BITG_5,BITG_6,BITG_7);
+
+/* Plane number comparison
+   Priority Equal and Not Equal */
+
+TRMINV1_(TRM1,TRM2) = MACINV2(SEQ_3,SEQ_6);
+DAM1_(DAM1) = N1A(DAM1L);
+PRTRM0G_(PRTRM_0) = ND2A(TRM1,DAM1L);
+PRTRM1G_(PRTRM_1) = ND2A(TRM3,DAM1);
+PRTRM2G_(PRTRM_2) = ND2A(PRTRM_0,PRTRM_1);
+PRTRM3G_(PRTRM_3) = ND2A(RESL_0,PRTRM_2);
+PRTRM4G_(PRTRM_4) = ND3A(RES_0,TRM2,TRM3);
+PREQ_(PREQ) = ND2A(PRTRM_3,PRTRM_4);
+PRNE_(PRNE) = N1A(PREQ);
+
+/* Priority Greater Than
+   This is active when the priority of the destination pixel is a higher
+   value than the priority of the source pixel.  This is given by:
+   prgt = 	/res[0].( dam1.dd[7]./sd[7]
+		       + /dam1.dd[3]./sd[3])
+               + res[0].( dd[7]./sd[7]
+		       + dd[6]./sd[7]./sd[6]
+		       + dd[6].dd[7]./sd[6]
+ */
+
+PRGT0_(PRGTT_0) = ND3A(DAM1,DD_7,SDL_7);
+PRGT1_(PRGTT_1) = ND3A(DAM1L,DD_3,SDL_3);
+PRGT2_(PRGTT_2) = ND2A(PRGTT_0,PRGTT_1);
+PRGT3_(PRGTT_3) = ND2A(RESL_0,PRGTT_2);
+
+PRGT4_(PRGTT_4) = ND2A(DD_7,SDL_7);
+PRGT5_(PRGTT_5) = ND3A(DD_6,SDL_7,SDL_6);
+PRGT6_(PRGTT_6) = ND3A(DD_6,DD_7,SDL_6);
+PRGT7_(PRGTT_7) = ND3A(PRGTT_4,PRGTT_5,PRGTT_6);
+PRGT8_(PRGTT_8) = ND2A(RES_0,PRGTT_7);
+
+PRGT_(PRGT) = ND2A(PRGTT_3,PRGTT_8);
+
+/* From these,  generate the inhibit signal */
+
+INHT0G_(INHT_0) = ND3A(CMPPLN,CMPGT,PRGT);
+INHT1G_(INHT_1) = ND3A(CMPPLN,CMPEQ,PREQ);
+INHT2G_(INHT_2) = ND3A(CMPPLN,CMPNE,PRNE);
+INHT3G_(INHT_3) = ND3A(CMPPLNL,CMPEQ,BEQ);
+INHT4G_(INHT_4) = ND3B(CMPPLNL,CMPNE,BEQL);
+INHT5G_(INHT_5) = ND2A(CMPBIT,BIT);
+INHGEN_(INHIB) = ND6B(INHT_0,INHT_1,INHT_2,INHT_3,INHT_4,INHT_5);
+
+END MODULE;
+END COMPILE;
+END;

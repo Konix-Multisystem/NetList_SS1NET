@@ -1,0 +1,64 @@
+COMPILE;
+DIRECTORY MASTER;
+/****************************************************************************
+stparam
+15/10/88
+
+State machine for the read parameters operation
+
+This state machine controls the blitter  read parameters operation within
+the outer loop.
+
+****************************************************************************/
+
+
+MODULE STPARAM;
+
+INPUTS	CYCEND,ICYCEND,SRESET,CCLK,RDPAR;
+OUTPUTS	PARCRQ,PARDN,LDINRL,LDPATL,LDSTPL,ILDPATL;
+LEVEL FUNCTION;
+DEFINE
+
+/* Invert some inputs */
+
+CYCENDL_(CYCENDL) = N1A(CYCEND);
+SRESETL_(SRESETL) = N1A(SRESET);
+
+/* Decode next state */
+
+IRP0T0_(RP0T_0) = ND3A(RPL_1,RPL_0,RDPAR);
+IRP0T1_(RP0T_1) = ND2A(RP_0,CYCENDL);
+IRP0T2_(RP0T_2) = ND3A(RP_1,RPL_0,CYCEND);
+IRP0GEN_(IRP_0) = ND3A(RP0T_0,RP0T_1,RP0T_2);
+
+IRP1T0_(RP1T_0) = ND3A(RPL_1,RP_0,CYCEND);
+IRP1T1_(RP1T_1) = ND2A(RP_1,RPL_0);
+IRP1T2_(RP1T_2) = ND2A(RP_1,CYCENDL);
+IRP1GEN_(IRP_1) = ND3A(RP1T_0,RP1T_1,RP1T_2);
+
+/* The state latches */
+
+RPLATCH_0_(RP_0,RPL_0) = FD2A(IRP_0,CCLK,SRESETL);
+RPLATCH_1_(RP_1,RPL_1) = FD2A(IRP_1,CCLK,SRESETL);
+
+/* Decode from the state */
+
+LDIDEC_(ILDINRL) = ND3A(RPL_1,RP_0,ICYCEND);
+LDIGEN_(LDINRL,LDINR) = FD1A(ILDINRL,CCLK);
+LDSDEC_(ILDSTPL) = ND3A(RP_1,RPL_0,ICYCEND);
+LDSGEN_(LDSTPL,LDSTP) = FD1A(ILDSTPL,CCLK);
+LDPDEC_(ILDPATL) = ND3C(RP_1,RP_0,ICYCEND);
+LDPGEN_(LDPATL,LDPAT) = FD1A(ILDPATL,CCLK);
+
+/* Pardn is generated synchronously to remove an asynchronous loop */
+PARDGEN_(PARDNT) = ND3A(RP_0,RP_1,ICYCEND);
+PARDN_(PARDNL,PARDN) = FD1A(PARDNT,CCLK);
+
+/* Parcrq is active while the state machine is active.  This is a
+look-ahead signal */
+PARCGEN_(PARCRQ) = OR2A(IRP_0,IRP_1);
+
+END MODULE;
+
+END COMPILE;
+END;

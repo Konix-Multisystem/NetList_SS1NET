@@ -1,0 +1,107 @@
+(****************************************************************************
+stmem
+19/10/88
+
+State machine for the memory interface
+
+This state machine controls the blitter memory interface
+
+****************************************************************************)
+
+IMPORT gates, latches, macros;
+
+DEF STMEM (ackint, cclk, comcrq, idstwr, incrq, inhib, 
+	parcrq, reset, res[0..1], waitL :IN; 
+	cycend, cycst, datoeL, icycend, icycst, incycL, pcen, updpcL, 
+	bmreq, brd, bwr, bword :IO);
+
+bmreqL, brdL, bwrL, bwordL, cclkL, cycendL, cycrq, icycendL, idstwrL, 
+imi[0..3], iwrd, iwrdL, mi[0..1], miL[0..1], mreqt[0..1], pcenL, pcnt[0..4], 
+resetL, rwt[0..2], updpc, wait, wrdt[0..2] :IO;
+
+BEGIN
+
+(* Invert inputs as required *)
+
+CclkL		:= INV1 (cclk, cclkL);
+IdstwrL		:= INV1 (idstwr, idstwrL);
+ResetL		:= INV1 (reset, resetL);
+Waitinv		:= INV1 (waitL, wait);
+
+(* Decode next state *)
+
+Crqgen		:= OR3 (comcrq, parcrq, incrq, cycrq);
+
+Imi[0]		:= NAND3 (miL[0], cycrq, ackint, imi[0]);
+Imi[1]		:= NAND2 (mi[0], wait, imi[1]);
+Imi[2]		:= NAND2 (imi[0..2]);
+Imi[3]		:= INV1 (imi[2..3]);
+
+(* The state latches *)
+
+Milatch[0]	:= DTLATCH1C (imi[2], cclk, resetL, mi[0], miL[0]);
+Milatch[1]	:= DTLATCH1C (mi[0], cclk, resetL, mi[1], miL[1]);
+
+(* Decodes from state *)
+
+(* mreq is given by T1 or TW, unless the cycle is a destination write and
+inhibit is active, in which case it is suppressed.  This allows the two
+tick timing of the memory interface to still be used during inhibited
+writes to update addresses 
+	mreq = mi[0] . /(dstwr . inhib) *)
+
+Mreqt[0]	:= NAND2 (idstwr, inhib, mreqt[0]);
+Mreqt[1]	:= NAND2 (imi[2], mreqt[0..1]);
+Mreqt[2]	:= DTLATCH1 (mreqt[1], cclk, bmreqL, bmreq);
+
+(* rd and wr are active in T1, TW and T2.  Do these by synchronous decode
+   rd = (mi[0] + mi[1]) . /idstwr
+   wr = (mi[0] + mi[1]) . idstwr . /inhib *)
+Rwt[0]		:= NOR2 (imi[2], mi[0], rwt[0]);
+Rwt[1]		:= NOR2 (rwt[0], idstwr, rwt[1]);
+Rwt[2]		:= NOR3 (rwt[0], idstwrL, inhib, rwt[2]);
+Rdff		:= DTLATCH1 (rwt[1], cclk, brd, brdL);
+Wrff		:= DTLATCH1 (rwt[2], cclk, bwr, bwrL);
+
+(* word is active throughout the cycle for an inner loop generated memory
+cycle when word resolution is set
+	word := word . /cycend
+	      + icycst . incrq . res[0] . res[1] *)
+
+Wrdt[0]		:= NAND2 (bword, cycendL, wrdt[0]);
+Wrdt[1]		:= NAND4 (icycst, incrq, res[0..1], wrdt[1]);
+Wrdt[2]		:= NAND2 (wrdt[0..2]);
+Wrdt[3]		:= DTLATCH1C (wrdt[2], cclk, resetL, bword, bwordL);
+
+(* Cycle positions *)
+
+Cycegen		:= NR2C (miL[1], mi[0], cycend);
+CycendL		:= INV1 (cycend, cycendL);
+Cycsgen		:= NOR2 (mi[1], miL[0], cycst);
+Icycegen	:= NR2C (miL[0], imi[2], icycend);
+IcycendL	:= INV1 (icycend, icycendL);
+Icycstgen	:= NOR2 (imi[3], mi[0], icycst);
+Incycgen	:= NOR2 (mi[0..1], incycL);
+
+(* Internal data output enable is given by wr, however data is not enabled
+for the first half tick of a write cycle  *)
+
+Iwrd		:= DTLATCH1 (bwr, cclkL, iwrd, iwrdL);
+DatoeL		:= NAND2 (bwr, iwrd, datoeL);
+
+(* Blitter program address is enabled for a cycle requiested by comcrq or
+parcrq, and the blitter program address is updated during the last cycle of
+one of these memory cycles.
+	pcen := pcen . /cycend
+	       +icycst . (comcrq + parcrq) *)
+
+Pcnt[0]		:= OR2 (comcrq, parcrq, pcnt[0]);
+Pcnt[1]		:= NAND2 (icycst, pcnt[0..1]);
+Pcnt[2]		:= NAND2 (pcen, cycendL, pcnt[2]);
+Pcnt[3]		:= NAND2 (pcnt[1..3]);
+Pcen		:= DTLATCH1C (pcnt[3], cclk, resetL, pcen, pcenL);
+
+Pcnt[4]		:= NAND2 (pcen, icycend, pcnt[4]);
+Updpc		:= DTLATCH1 (pcnt[4], cclk, updpcL, updpc);
+
+END

@@ -1,0 +1,91 @@
+(****************************************************************************
+stouter
+15/10/88
+
+Blitter outer loop control state machine
+
+The outer loop is the top level of control, and invokes the read command, 
+read parameter and inner loop state machines.  This is unchanged from the
+old blitter.
+
+****************************************************************************)
+
+IMPORT gates, latches, macros;
+
+DEF STOUTER (comdn, dstup, iquiet, outer0L, pardn, parrd, sreset, 
+	srcup, cclk :IN; 
+	adstp, inlp, ldicntL, rdcmd, rdpar, sdasel, otclkL, iupddstL, 
+	iupdsrcL :IO);
+        
+sresetL, pardnL, srcupL, dstupL, iquietL, tl[0..2], 
+tlL[0..2], itl[0..2], itl0t[0..5], itl1t, itl2t[0..2], itlL[0..1], otclk, 
+trm0, trm0L, trm1, trm2, trm3, trm3L  :IO;
+
+BEGIN
+
+(* Buffer and invert some inputs *)
+
+SresetL		:= INV1 (sreset, sresetL);
+PardnL		:= INV1 (pardn, pardnL);
+SrcupL		:= INV1 (srcup, srcupL);
+DstupL		:= INV1 (dstup, dstupL);
+IquietL		:= INV1 (iquiet, iquietL);
+
+(* Decode the next state *)
+
+(* Common terms *)
+
+Trm0gen		:= NAND3 (tlL[2], tl[1], tl[0], trm0);
+Trm0inv		:= INV1 (trm0, trm0L);
+Trm3inv		:= INV1 (trm3, trm3L);
+Trm1gen		:= NAND2 (trm3L, dstup, trm1);
+Trm2gen		:= NAND4 (tlL[2], tlL[1], tlL[0], comdn, trm2);
+Trm3gen		:= NAND4 (tl[2], tlL[1], tlL[0], outer0L, trm3);
+
+(* Bit 0 *)
+
+Itl0t0		:= NAND2 (trm0L, pardnL, itl0t[0]);
+Itl0t1		:= NAND4 (tl[2], tl[1], tlL[0], parrd, itl0t[1]);
+Itl0t2		:= NAND5 (tl[2], tl[1], tl[0], parrd, srcupL, itl0t[2]);
+Itl0t3		:= NAND4 (trm3L, dstupL, srcupL, parrd, itl0t[3]);
+Itl0t4		:= NAND3 (tlL[2], tl[1], tlL[0], itl0t[4]);
+Itl0t5		:= NAND4 (tlL[2], tlL[1], tl[0], iquietL, itl0t[5]);
+Itl0gen		:= NAND8 (itl0t[0..5], trm2, trm1, itl[0]);
+
+(* Bit 1 *)
+
+Itl1t0		:= NAND2 (tl[2], tl[1], itl1t);
+Itl1gen		:= NAND4 (trm0, trm2, itl1t, trm3, itl[1]);
+
+(* Bit 2 *)
+
+Itl2t0		:= NAND4 (tlL[2], tlL[1], tl[0], iquiet, itl2t[0]);
+Itl2t1		:= NAND3 (trm3L, dstupL, srcup, itl2t[1]);
+Itl2t2		:= NAND4 (tl[2], tl[1], tl[0], srcup, itl2t[2]);
+Itl2gen		:= NAND4 (itl2t[0..2], trm1, itl[2]);
+
+(* The state latches *)
+
+Tllatch[0-2]	:= DTLATCH1C (itl[0-2], cclk, sresetL, tl[0-2], tlL[0-2]);
+
+(* Decodes from state *)
+
+Itlinv		:= INV2 (itl[0..1], itlL[0..1]);
+Rdpargen	:= NOR3 (itl[2], itlL[1], itlL[0], rdpar);
+Rdcmdgen	:= NOR3 (itl[2], itl[1], itl[0], rdcmd);
+
+(* The inner loop is fired off from the set up inner count state *)
+Inlpgen		:= NOR3 (tl[2], tlL[1], tl[0], inlp);
+
+Uddgen		:= NAND3 (itl[2], itl[1], itl[0], iupddstL);
+Udsgen		:= NAND3 (itl[2], itl[1], itlL[0], iupdsrcL);
+Ldicgen		:= NAND3 (tlL[2], tl[1], tlL[0], ldicntL);
+Adstpgen	:= NOR2 (tlL[1..2], adstp);
+Sdagen		:= ND3C (tlL[0..2], sdasel);
+
+(* The outer counter is clocked on exit from the inner loop.  This is
+given by an active low pulse decoded as the inner loop. *)
+
+Otclk		:= DTLATCH1 (inlp, cclk, otclk, otclkL);
+
+END

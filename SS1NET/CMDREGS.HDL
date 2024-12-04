@@ -1,0 +1,69 @@
+(****************************************************************************
+cmdregs
+15/10/88
+
+Blitter state machine command registers
+
+Parts of some of these registers lie elsewhere in the blitter.
+
+****************************************************************************)
+
+IMPORT gates, latches, macros;
+
+DEF CMDREGS (cclk, cmdwrL, conwrL, icnt[8], id[0..7], ldmodL, ldcmdL, reset, 
+	stop, strd :IN; 
+	colst, dsten, dstup, lindr, parrd, res[0..1], resume, 
+	run, srcen, srcenf, srcup, sreset :IO;
+	d[1..2] :TRI);
+
+cmdldL, colstL, dstenL, dstupL, lindrL, parrdL, 
+resetL, resL[0..1], runL, srcenL, srcenfL, srcupL, sresetL, sres[0..3], 
+sresL[0..2], rsm[0..2], rsmL[0..2], resclrL :IO;
+
+BEGIN
+
+ResetL		:= INV1 (reset, resetL);
+
+(* Command Register, this is loaded by a program fetch or by an IO write
+cycle.  *)
+
+CmdldL		:= AND2 (cmdwrL, ldcmdL, cmdldL);
+Comr[0]		:= DTLATCH1C (id[0], cmdldL, sresetL, run, runL);
+Comr[1]		:= LD2A (id[1], cmdldL, colst, colstL);
+Comr[2]		:= LD2A (id[2], cmdldL, parrd, parrdL);
+Comr[3]		:= LD2A (id[3], cmdldL, srcup, srcupL);
+Comr[4]		:= LD2A (id[4], cmdldL, dstup, dstupL);
+Comr[5]		:= LD2A (id[5], cmdldL, srcen, srcenL);
+Comr[6]		:= LD2A (id[6], cmdldL, dsten, dstenL);
+Comr[7]		:= LD2A (id[7], cmdldL, srcenf, srcenfL);
+
+(* Mode Register *)
+
+Modl[3]		:= LD2A (id[3], ldmodL, lindr, lindrL);
+Modl[5]		:= LD2A (id[5], ldmodL, res[0], resL[0]);
+Modl[6]		:= LD2A (id[6], ldmodL, res[1], resL[1]);
+
+(* Blitter control register (part of) *)
+
+(* Resume is a pulse one tick wide produced when a 1 is written to bit 1 *)
+Resff0		:= DTLATCH1C (id[1], conwrL, resclrL, rsm[0], rsmL[0]);
+Resff1		:= DTLATCH1C (rsm[0], cclk, resetL, rsm[1], rsmL[1]);
+Resff2		:= DTLATCH1C (rsm[1], cclk, resetL, rsm[2], rsmL[2]);
+Resume		:= NOR2 (rsmL[1], rsm[2], resume);
+Resclr		:= NOR2 (rsm[2], reset, resclrL);
+
+(* Sreset is a pulse one tick wide which is produced whenever a 1 is written
+to the blitter control port on bit 2.  *)
+Sres0		:= DTLATCH1C (id[2], conwrL, sresetL, sres[0], sresL[0]);
+Sres1		:= DTLATCH1C (sres[0], cclk, resetL, sres[1], sresL[1]);
+Sres2		:= DTLATCH1C (sres[1], cclk, resetL, sres[2], sresL[2]);
+Sres3		:= NOR2 (sresL[1], sres[2], sres[3]);
+SresetL		:= NOR2 (reset, sres[3], sresetL);
+Sreset		:= INV1 (sresetL, sreset);
+
+(* Blitter status port (part of) *)
+
+Stat[1]		:= ZBUF1 (stop, strd, d[1]);
+Stat[2]		:= ZBUF1 (icnt[8], strd, d[2]);
+
+END

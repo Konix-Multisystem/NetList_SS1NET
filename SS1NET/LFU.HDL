@@ -1,0 +1,71 @@
+(****************************************************************************
+lfu
+19/10/88
+
+Blitter data logic function unit
+
+This unit selects the data to be output during a write cycle.  This may be
+taken from the source data, the destination data, or the pattern data.  In
+sixteen bit mode the high byte is always the source data.
+
+****************************************************************************)
+
+IMPORT macros, gates, latches;
+
+DEF LFU (dam1L, datoeL, dstd[0..7], id[4..7], ldcmpL, ldmodL, 
+	patd[0..7], res[0], srcd[0..15] :IN; 
+	d[0..15] :TRI);
+
+dam1, datoe, fd[0..7], fdoL[0..7], hidsel, hidselL, resL[0], 
+lfuc[0..3], lfucL[0..3], lodsel, lodselL, patsel, patselL, psd[0..7] :IO;
+
+BEGIN
+
+ResL[0]		:= INV1 (res[0], resL[0]);
+
+(* LFU Control bits *)
+
+Lfucl[0-3]	:= LD2A (id[4-7], ldcmpL, lfuc[0-3], lfucL[0-3]);
+Patsel		:= LD2A (id[7], ldmodL, patsel, patselL);
+
+(* Select between pattern data and source data *)
+
+Psmux[0-7]	:= MUX2 (srcd[0-7], patselL, patd[0-7], patsel, psd[0-7]);
+
+(* Logic Function Unit *)
+
+Lfu[0-7]	:= LFUBIT (psd[0-7], dstd[0-7], lfuc[0..3], fd[0-7]);
+
+(* Select LFU output or unchanged destination data for hires or lores *)
+
+Hrhdinv		:= INV2 (lodselL, hidsel, lodsel, hidselL);
+Dam1		:= INV1 (dam1L, dam1);
+Lodgen		:= NAND2 (resL[0], dam1, lodselL);
+Hidgen		:= NOR2 (res[0], dam1, hidsel);
+Lfdomux[0-3]	:= AOI (lodsel, dstd[0-3], lodselL, fd[0-3], fdoL[0-3]);
+Lfdomux[4-7]	:= AOI (hidsel, dstd[4-7], hidselL, fd[4-7], fdoL[4-7]);
+
+(* Drive the output data onto the data bus *)
+
+Datoe		:= N1C (datoeL, datoe);
+Lfdriv[0-7]	:= ZINV1 (fdoL[0-7], datoe, d[0-7]);
+Lfdriv[8-15]	:= ZBUF1 (srcd[8-15], datoe, d[8-15]);
+
+END;
+
+(* Logic function unit element *)
+
+DEF LFUBIT (srcd, dstd, lfuc[0..3]:IN; dout:IO);
+		
+srcdL, dstdL, trm[0..3]:IO;
+
+BEGIN
+
+Dinv		:= INV2 (srcd, dstd, srcdL, dstdL);
+Lftrm0		:= NAND3 (srcdL, dstdL, lfuc[0], trm[0]);
+Lftrm1		:= NAND3 (srcdL, dstd, lfuc[1], trm[1]);
+Lftrm2		:= NAND3 (srcd, dstdL, lfuc[2], trm[2]);
+Lftrm3		:= NAND3 (srcd, dstd, lfuc[3], trm[3]);
+Lfgen		:= NAND4 (trm[0..3], dout);
+
+END;

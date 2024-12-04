@@ -1,0 +1,136 @@
+COMPILE;
+DIRECTORY MASTER;
+/********************************************************
+*	clock-hdl					*
+*	3/11/88						*
+********************************************************/
+
+/*
+This module is the clock generator in the SLIPSTREAM chip on the ACW
+*/
+
+
+
+
+MODULE CLOCK;
+
+INPUTS	MCK,VRD,VWR,NTSC,FAST,TSTCLK,LP;
+OUTPUTS	PCLKL,CCLK,CHROMAL,DQCLK;
+LEVEL FUNCTION;
+DEFINE
+
+/* Clock Generation
+
+Clocks are produced from a divide by 3 shift register, thus
+
+	  |    --  3 tick cycle  --     |
+
+XTAL	__/^^^^\____/^^^^\____/^^^^\____/^^^^\____
+CA	^^^\_________/^^^^^^^^^^^^^^^^^^^\________
+CB	^^^^^^^^^^^^^\_________/^^^^^^^^^^^^^^^^^^
+DCA	^^^^^^^^\_________/^^^^^^^^^^^^^^^^^^^\___
+DCB	^^^^^^^^^^^^^^^^^^\_________/^^^^^^^^^^^^^
+CCLK	____/^^^^\_________/^^^^\_________/^^^^\__
+DQCLK	____/^^^^^^^^^\____/^^^^^^^^^\____/^^^^^^^
+
+The two shift register terms, CA and CB are delayed with the inverse of
+XTAL to give DCA and DCB.  From these decodes give CCLK and DQCLK.  Paths
+are matched for delay on CCLK.  The DQCLK rising edge to CCLK rising edge
+setup is given by using C strength gates in the DQCLK path, and by the
+extra delay of the CCLK buffer.
+*/
+
+MCKL_(MCKL) = N1B(MCK);
+
+/* divide by three shift register */
+
+CAT_(CAT) = ND2A(CA,CB);
+CA_(CA,CAL) = FD2A (CAT, MCK, CKRSTL);
+CB_(CB,CBL) = FD2A (CA, MCK, CKRSTL);
+
+/* delayed version of CA for cclk generation */
+
+CAD_(CAD,CADL) = FD2A (CA, MCKL, CKRSTL);
+
+/* from this comes non-test cclk */
+
+TCB_(TCB) = N1A (CBL);		/* helps match path delays */
+CCLKT_(CCLKT) = ND2A (CA,TCB);
+CCLKD_(CCLKU) = ND2A (CAD, CCLKT);
+
+CCLK0L_(CCLK0L) = N1A(CCLKU);	/* 4 inverter delay on CCLK */
+CCLK0_(CCLK0) = N1A (CCLK0L);
+CCLK1L_(CCLK1L) = N1A(CCLK0);
+CCLK1_(CCLKD) = N1A (CCLK1L);
+
+/* DSP pervy clock requires a delayed version of B */
+
+CBD_(CBD,CBDL) = FD2A (CB, MCKL, CKRSTL);
+TCA_(TCA) = N1C (CAL);
+DCLD_(DCLKD) = ND2C (CBD, TCA);
+
+/* CPU clock */
+
+CPTCA_(CPTCA) = N1A (CAL);
+CLK6_(CLK6) = ND2A (CPTCA, CAD);
+
+/* test reset is a combination of vrd and vwr */
+
+CKRSTL_(CKRSTL) = ND2A(VRD,VWR);
+
+/* For test purposes the external clock is used internally */
+
+TSTCLKL_(TSTCLKL) = N1A(TSTCLK);
+CCLK_(CCLK) = AO2C(TSTCLK,MCK,TSTCLKL,CCLKD);
+
+/* For test purposes the lp input is used */
+
+LPL_(LPL) = N1A(LP);
+DCLK_(DCLKL) = AO2C(TSTCLK,LPL,TSTCLKL,DCLKD);
+DQCLK_(DQCLK) = B1A(DCLKL);
+
+/* the processor clock is either 6Mhz or 9Mhz */
+
+SLOW_(SLOW) = N1A(FAST);
+PCLKL_(PCLKL) = AO2A(FAST,X,SLOW,CLK6);
+
+/* The colour subcarrier is either mck/4 for PAL or mck/5 for NTSC */
+/* divide by four */
+
+X_(X,XL) = FD2A(XL,MCKL,CKRSTL);
+Y_(Y,YL) = FD2A(YL,XL,CKRSTL);
+
+/* divide by five */
+
+SHIFT1_(AL,A) = FD4A(D,MCKL,CKRSTL);
+SHIFT2_(B,BL) = FD2A(A,MCKL,CKRSTL);
+SHIFT3_(C,CL) = FD2A(B,MCKL,CKRSTL);
+SHFDEC_(D) = AO2A(A,CL,AL,BL);
+
+/* sample 'a' with other edge of mck to get 50% duty cycle */
+
+AD_(AD,ADL) = FD2A(A,MCK,CKRSTL);
+Z_(Z) = ND2A(A,AD);
+
+/* select appropriate carrier */
+
+PAL_(PAL) = N1A(NTSC);
+CHROMAL_(CHROMAL) = AO2A(PAL,Y,NTSC,Z);
+
+END MODULE;
+
+/* QSR is an SR latch with high fanout */
+
+MODULE QSR;
+
+INPUTS	S,R;
+OUTPUTS	Q,QL;
+LEVEL FUNCTION;
+DEFINE
+Q_(Q) = ND2B(S,QL);
+QL_(QL) = ND2B(R,Q);
+END MODULE;
+
+
+END COMPILE;
+END;

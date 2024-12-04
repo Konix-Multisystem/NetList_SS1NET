@@ -1,0 +1,181 @@
+COMPILE;
+DIRECTORY MASTER;
+/****************************************************************************
+stinner
+19/10/88
+
+Blitter Inner Loop State Machine
+
+****************************************************************************/
+
+
+MODULE STINNER;
+
+INPUTS	BORROW,CCLK,COLST,CYCEND,CYCST,DAM1L,DSTEN,ICYCEND,ICYCST,ILDPATL,INHIB,
+   INLP,INNER0,IUPDDSTL,IUPDSRCL,LINDR,RES_0,RESET,RESUME,SAM1L,SRCEN,SRCENF,
+   SRESET;
+OUTPUTS	ADDBACKL,ADDBLDL,DSTWR,IDSTWR,INCLKL,INCRQ,IQUIET,LDDSTL,LDSRCL,SRCLTOH,
+   SRCRD,SSWAP,STOP,UPDDSTL,UPDSRCL,UPSLDL;
+LEVEL FUNCTION;
+DEFINE
+
+/* Invert inputs as required */
+
+CCLKINV_(CCLKL) = N1A(CCLK);
+CYCENDL_(CYCENDL) = N1A(CYCEND);
+DSTENL_(DSTENL) = N1A(DSTEN);
+INLPL_(INLPL) = N1A(INLP);
+INNER0L_(INNER0L) = N1A(INNER0);
+LINDRL_(LINDRL) = N1A(LINDR);
+RESUMEL_(RESUMEL) = N1A(RESUME);
+SRCENL_(SRCENL) = N1A(SRCEN);
+SRCENFL_(SRCENFL) = N1A(SRCENF);
+SRESETL_(SRESETL) = N1A(SRESET);
+
+COLSTOPL_(COLSTOPL) = ND2A(INHIB,COLST);
+COLSTOP_(COLSTOP) = N1A(COLSTOPL);
+
+/* Quiescent state of state machine - quiet */
+
+QT0_(QT_0) = ND2A(QUIET,INLPL);
+QT1_(QT_1) = ND3A(DSTWR,CYCEND,INNER0);
+QT2_(IQUIET) = ND2A(QT_0,QT_1);
+QUIET_(QUIET,QUIETL) = FD4A(IQUIET,CCLK,SRESETL);
+
+/* Source read cycle */
+
+SRT0_(SRT_0) = ND3A(QUIET,INLP,SRCENF);
+SRT1_(SRT_1) = ND3A(QUIET,INLP,SRCEN);
+SRT2_(SRT_2) = ND2A(SRCRD,CYCENDL);
+SRT3_(SRT_3) = ND4A(DSTWR,CYCEND,INNER0L,SRCEN);
+SRT4_(ISRCRD) = ND4A(SRT_0,SRT_1,SRT_2,SRT_3);
+SRCRD_(SRCRD,SRCRDL) = FD2A(ISRCRD,CCLK,SRESETL);
+
+/* Destination read cycle */
+
+DRT0_(DRT_0) = ND5A(QUIET,INLP,DSTEN,SRCENL,SRCENFL);
+DRT1_(DRT_1) = ND3A(SRCRD,CYCEND,DSTEN);
+DRT2_(DRT_2) = ND2A(DSTRD,CYCENDL);
+DRT3_(DRT_3) = ND5A(DSTWR,CYCEND,INNER0L,SRCENL,DSTEN);
+DRT4_(IDSTRD) = ND4A(DRT_0,DRT_1,DRT_2,DRT_3);
+DSTRD_(DSTRD,DSTRDL) = FD2A(IDSTRD,CCLK,SRESETL);
+
+/* Destination write cycle */
+
+DWT0_(DWT_0) = ND5A(QUIET,INLP,DSTENL,SRCENL,SRCENFL);
+DWT1_(DWT_1) = ND3A(DSTRD,CYCEND,COLSTOPL);
+DWT2_(DWT_2) = ND4A(SRCRD,CYCEND,DSTENL,COLSTOPL);
+DWT3_(DWT_3) = ND2A(DSTWR,CYCENDL);
+DWT4_(DWT_4) = ND5A(DSTWR,CYCEND,INNER0L,DSTENL,SRCENL);
+DWT5_(DWT_5) = ND2A(STOP,RESUME);
+DWT6_(IDSTWR) = ND6B(DWT_0,DWT_1,DWT_2,DWT_3,DWT_4,DWT_5);
+DSTWR_(DSTWR,DSTWRL) = FD2A(IDSTWR,CCLK,SRESETL);
+
+/* Collision stop state */
+
+STT0_(STT_0) = ND3A(DSTRD,CYCEND,COLSTOP);
+STT1_(STT_1) = ND4A(SRCRD,CYCEND,COLSTOP,DSTENL);
+STT2_(STT_2) = ND2A(STOP,RESUMEL);
+STT3_(ISTOP) = ND3A(STT_0,STT_1,STT_2);
+STOP_(STOP,STOPL) = FD2A(ISTOP,CCLK,SRESETL);
+
+/* Decodes from state */
+
+/* Request a cycle for any of the three cycle types */
+
+INCRQ_(INCRQ) = OR3A(IDSTRD,ISRCRD,IDSTWR);
+
+/* Inner count clock is a pulse one cycle long at the start of a destination
+   write cycle.  */
+
+INCKGEN_(IINCLKL) = ND2A(ICYCST,IDSTWR);
+INCKLAT_(INCLKL,INCLK) = FD1A(IINCLKL,CCLK);
+
+/* The source address register is updated in the last cycle of a source
+address read.  It is also updated in the first cycle of a destination
+write cycle in line draw mode, and can also be updated as part of the
+outer loop, given by iupdsrcL */
+
+SUT_0_(SUT_0) = ND2A(SRCRD,ICYCEND);
+SUT_1_(SUT_1) = ND3A(IDSTWR,ICYCST,LINDR);
+SUT_2_(SUT_2) = ND3B(IUPDSRCL,SUT_0,SUT_1);
+UPDSRC_(UPDSRC,UPDSRCL) = FD1A(SUT_2,CCLK);
+
+/* A load strobe is produced from this active only for the second
+half of the clock cycle.  This is because it can immediately follow
+the previous source update (the add back) as with addbldL */
+
+SUT3_(SUTL_3,SUT_3) = FD1A(UPDSRCL,CCLKL);
+SUT4_(SUT_4,SUTL_4) = FD1A(SUT_3,CCLK);
+UPSLDL_(UPSLDL) = ND2A(SUT_3,SUTL_4);
+
+/* The source address can also perfrom the local addback in line
+drawing mode.  This occurs on the last cycle of a line draw.  This
+is an asynchronous signal as borrow does not become true until
+after the first cycle of the write (which could immediately precede
+the last */
+
+ADDBACK_(ADDBACKL) = ND4A(LINDR,DSTWR,BORROW,CYCEND);
+
+/* A load strobe is produced from this active only for the second
+half of the clock cycle.  This is because it can immediately follow
+the previous source update (the subtraction) */
+
+ABD_0_(ABTL_0,ABT_0) = FD1A(ADDBACKL,CCLKL);
+ABT_1_(ABT_1,ABTL_1) = FD1A(ABT_0,CCLK);
+ADDBLDL_(ADDBLDL) = ND2A(ABT_0,ABTL_1);
+
+/* The destination address register update will always occur on
+the last cycle of the destination write cycle.  It can also occur
+in the outer loop, given by iupddstL */
+
+DUT_0_(DUT_0) = ND2A(DSTWR,ICYCEND);
+DUT_1_(DUT_1) = ND2A(IUPDDSTL,DUT_0);
+UPDDST_(UPDDST,UPDDSTL) = FD1A(DUT_1,CCLK);
+
+/* The source data register is loaded in the last cycle of the source
+read cycle, when the pattern data is loaded and also at reset */
+
+LDSTRM_(LSTL) = ND3A(ICYCEND,SRCRD,LINDRL);
+LDSGEN_(ILDSRC) = ND2A(ILDPATL,LSTL);
+LDSLATCH_(LDSRCT,LDSRCTL) = FD1A(ILDSRC,CCLK);
+LDSRCL_(LDSRCL) = NR2C(LDSRCT,RESET);
+
+/* When the source data register is loading pattern data, it must load
+data from the low byte of the data bus into the high byte of the
+register */
+
+LHT_0_(LHT_0,LHT_1) = FD1A(ILDPATL,CCLK);
+LHT_2_(LHT_2) = ND2A(ILDPATL,LHT_0);
+SRCLTOH_(SRCLTOH,SRCLTOHL) = FD1A(LHT_2,CCLK);
+
+/* The destination data register is loaded in the last cycle of the
+destination read cycle, and again also when pattern data is loaded */
+
+LDDDEC0_(LDTL) = ND2A(ICYCEND,DSTRD);
+LDTGEN_(ILDDST) = ND2A(ILDPATL,LDTL);
+LDDLATCH_(LDDST,LDDSTL) = FD1A(ILDDST,CCLK);
+
+/* The two halves of the source data byte nust be swapped in hires or lores
+if the -1 bits of the two addresses are different (given by nibdif, below).
+It is inhibited if character painting is performed (srcenf) */
+
+SSWGEN_(SSWAP) = NR3C(NIBDIFL,RES_0,SRCENF);
+
+/* Generate nibdif
+This indicates that the nibble bits are different, and therefore the two
+halves of the source data need to be swapped.  This requires that the source
+address bit be latched at the start of the cycle as it may change part way 
+through an inner loop pass, when it is updated at the end of the source read
+cycle.  It is loaded in the first tick of a source read, and also when the
+state machine is inactive (in case there are no source reads) */
+
+STLDT_(STLDT) = AND2A(SRCRD,CYCST);
+STLDL_(STLDL) = NR2A(STLDT,QUIET);
+SALATCH_(SAM1DL,SAM1D) = LD2A(SAM1L,STLDL);
+AINV_(DAM1) = N1A(DAM1L);
+NDGEN_(NIBDIFL) = AO2B(DAM1L,SAM1D,DAM1,SAM1DL);
+
+END MODULE;
+END COMPILE;
+END;

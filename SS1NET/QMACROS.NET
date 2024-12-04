@@ -1,0 +1,105 @@
+/*****************************************************************************
+QMACROS.NET
+
+13/9/88
+
+Macros for Qudos cells not represented in LSI Logic Library
+
+*****************************************************************************/
+
+COMPILE;
+DIRECTORY MASTER;
+
+/* twin inverter */
+
+MODULE MACINV2;
+
+INPUTS	I1,I2;
+OUTPUTS	Q1,Q2;
+
+LEVEL FUNCTION;
+DEFINE
+ONE_(Q1)=N1A(I1);
+TWO_(Q2)=N1A(I2);
+END MODULE;
+
+/* buffer */
+
+MODULE MACBUF1;
+
+INPUTS	I;
+OUTPUTS	Q;
+
+LEVEL FUNCTION;
+DEFINE
+ONE_(T)=N1A(I);
+TWO_(Q)=N1A(T);
+END MODULE;
+
+/* tri-state driver */
+
+MODULE MACZINVB1;
+
+INPUTS	I,EL;
+OUTPUTS	Z;
+
+LEVEL FUNCTION;
+DEFINE
+ONE_(E)=N1A(EL);
+TWO_(Z)=BTS5A(I,E);
+END MODULE;
+
+/* JK BAR flip-flop */
+
+MODULE MACJKBART;
+
+INPUTS	J,KL,CLK;
+OUTPUTS	Q,QL;
+
+LEVEL FUNCTION;
+DEFINE
+ONE_(K)=N1A(KL);
+TWO_(Q,QL)=FJK1A(J,K,CLK);
+END MODULE;
+
+/* 8 input AND gate */
+
+MODULE MACAND8;
+
+INPUTS A,B,C,D,E,F,G,H;
+OUTPUTS Q;
+
+LEVEL FUNCTION;
+DEFINE
+ONE_(QL) = ND8A (A,B,C,D,E,F,G,H);
+TWO_(Q) = N1A (QL);
+END MODULE;
+
+/* 6 input AND gate */
+
+MODULE MACAND6;
+
+INPUTS A,B,C,D,E,F;
+OUTPUTS Q;
+
+LEVEL FUNCTION;
+DEFINE
+ONE_(QL) = ND6A (A,B,C,D,E,F);
+TWO_(Q) = N1A (QL);
+END MODULE;
+
+
+/* 7 input NAND gate */
+
+MODULE MACNAND7;
+
+INPUTS A,B,C,D,E,F,G;
+OUTPUTS Q;
+
+LEVEL FUNCTION;
+DEFINE
+ONE_(Q) = ND8A (A,B,C,D,E,F,G,NC/1/);
+END MODULE;
+
+END COMPILE;
+END;

@@ -1,0 +1,64 @@
+(****************************************************************************
+addradd
+26/9/88
+
+Address Adder
+
+****************************************************************************)
+
+IMPORT gates, macros;
+
+DEF ADDRADD (addam1, adda[0..19], addbm1, addb[0..8], carryin[0..1],
+	cinh6, cinh7, cinh15, hisign, vhisign :IN;
+	addqm1, addq[0..19], carryout :IO);
+
+cinh6L, cinh7L, cinh15L, cry[0..7] :IO;
+
+BEGIN
+
+(* Invert control bits as required *)
+
+Cinh6L		:= INV1 (cinh6, cinh6L);
+Cinh7L		:= INV1 (cinh7, cinh7L);
+Cinh15L		:= INV1 (cinh15, cinh15L);
+
+(* Add bits -1 to 6, using the carry in if required *)
+
+Adder0		:= FULLADD4 (addam1, adda[0..2], addbm1, addb[0..2], 
+			carryin[0], addqm1, addq[0..2], cry[0]);
+Adder1		:= FULLADD4 (adda[3..6], addb[3..6], cry[0], 
+			addq[3..6], cry[1]);
+
+(* Inhibit carry and inject sign if required from 6-7 *)
+
+Cryinh6		:= MUX2 (cinh6, carryin[1], cinh6L, cry[1], cry[2]);
+
+(* Add bit 7
+   The carry output from this stage is used to generate the borrow term
+   for line draw computattion. *)
+
+Adder2		:= FULLADD (adda[7], addb[7], cry[2], addq[7], carryout);
+
+(* Inhibit carry and inject carry if required from 7-8. *)
+
+Cryinh7		:= MUX2 (cinh7, carryin[1], cinh7L, carryout, cry[3]);
+ 
+(* Perform the addition on bits 8-15.  Note that the B input is the same for 
+   bits 9-15, and is given by hisign.  *)
+
+Adder3		:= FULLADD4 (adda[8..11], addb[8], hisign, hisign, hisign,
+			cry[3], addq[8..11], cry[4]);	
+Adder4		:= FULLADD4 (adda[12..15], hisign, hisign, hisign, hisign,
+			cry[4], addq[12..15], cry[5]);
+
+(* Inhibit carry from bits 15 to 16 if required *)
+
+Cryinh15	:= AND2 (cinh15L, cry[5], cry[6]);
+
+(* Perform the addition on bits 17-19 *)
+
+Adder5		:= FULLADD4 (adda[16..19], vhisign, vhisign, vhisign, vhisign,
+			cry[6], addq[16..19], cry[7]);
+
+END;
+

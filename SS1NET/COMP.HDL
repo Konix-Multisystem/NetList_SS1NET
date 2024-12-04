@@ -1,0 +1,118 @@
+(****************************************************************************
+comp
+15/10/88
+
+Blitter data comparator
+
+****************************************************************************)
+
+IMPORT gates, latches, macros;
+
+DEF COMP (dstcmp, id[0..3], ldcmpL, ldmodL, srcd[0..7], dstd[0..7], patd[0..7],
+	icnt[0..2], dam1L, res[0], srccmp :IN; 
+	inhib :IO);                
+
+beq, beqL, bit, bitg[0..7], cmpbit, cmpbitL, cmpeq, cmpeqL, cmpgt, cmpgtL, 
+cmpne, cmpneL, cmppln, cmpplnL, dam1, dd[0..7], ddL[0..7], eqt[0..2], heq, 
+resL[0], inht[0..5], icntL[0..2], leq, prtrm[0..4], preq, prgt, prne, 
+prgtt[0..8], seq[0..7], sd[0..7], sdL[0..7], trm1, trm2, trm3 :IO;
+
+BEGIN
+
+ResL[0]		:= INV1 (res[0], resL[0]);
+
+(* The comparator control register *)
+
+Lfucl0		:= LD2A (id[0], ldcmpL, cmpeq, cmpeqL);
+Lfucl1		:= LD2A (id[1], ldcmpL, cmpne, cmpneL);
+Lfucl2		:= LD2A (id[2], ldcmpL, cmpgt, cmpgtL);
+Lfucl4		:= LD2A (id[3], ldcmpL, cmppln, cmpplnL);
+Lfucl5		:= LD2A (id[2], ldmodL, cmpbit, cmpbitL);
+                   
+(* Select between source/pattern and destination/pattern data according to
+the srccmp and dstcmp control bits *)
+
+Srcsel[0-7]	:= MX21LA (patd[0-7], srcd[0-7], srccmp, sdL[0-7]);
+Dstsel[0-7]	:= MX21LA (patd[0-7], dstd[0-7], dstcmp, ddL[0-7]);
+Sdinv[0-7]	:= INV1 (sdL[0-7], sd[0-7]);
+Ddinv[0-7]	:= INV1 (ddL[0-7], dd[0-7]);
+
+(* Generate the pixel equal inhibit term
+   This corresponds to the whole byte in lores, or one nybble of it in
+   hires or lores.  The selection is made on the res[0] flag and the nybble bit
+   of the destination address.  If cmppln is clear then an inhibit may
+   be generated on byte not equal or byte equal. *)
+
+Neq[0-7]	:= AOI (sd[0-7], dd[0-7], sdL[0-7], ddL[0-7], 
+			seq[0-7]);
+Leqgen		:= NOR4 (seq[0..3], leq);
+Heqgen		:= NOR4 (seq[4..7], heq);
+Eqt0g		:= NAND3 (res[0], leq, heq, eqt[0]);
+Eqt1g		:= NAND3 (resL[0], dam1L, leq, eqt[1]);
+Eqt2g		:= NAND3 (resL[0], dam1, heq, eqt[2]);
+Eqgen		:= NAND3 (eqt[0..2], beq);
+Beqinv		:= INV1 (beq, beqL);
+
+(* Generate bit selection term
+   This allows an inhibit to be generated based on one bit of the source
+   data register, selected by the inner counter value. *)
+
+Icntinv[0-2]	:= INV1 (icnt[0-2], icntL[0-2]);
+Trm3		:= INV1 (seq[7], trm3);
+Bitg0		:= NAND4 (icntL[2], icntL[1], icntL[0], sdL[0], bitg[0]);
+Bitg1		:= NAND4 (icnt[2], icnt[1], icnt[0], sdL[1], bitg[1]);
+Bitg2		:= NAND4 (icnt[2], icnt[1], icntL[0], sdL[2], bitg[2]);
+Bitg3		:= NAND4 (icnt[2], icntL[1], icnt[0], sdL[3], bitg[3]);
+Bitg4		:= NAND4 (icnt[2], icntL[1], icntL[0], sdL[4], bitg[4]);
+Bitg5		:= NAND4 (icntL[2], icnt[1], icnt[0], sdL[5], bitg[5]);
+Bitg6		:= NAND4 (icntL[2], icnt[1], icntL[0], sdL[6], bitg[6]);
+Bitg7		:= NAND4 (icntL[2], icntL[1], icnt[0], sdL[7], bitg[7]);
+Bitgen		:= NAND8 (bitg[0..7], bit);
+
+(* Plane number comparison
+   Priority Equal and Not Equal *)
+
+Trminv1		:= INV2 (seq[3], seq[6], trm1, trm2);
+Dam1		:= INV1 (dam1L, dam1);
+Prtrm0g		:= NAND2 (trm1, dam1L, prtrm[0]);
+Prtrm1g		:= NAND2 (trm3, dam1, prtrm[1]);
+Prtrm2g		:= NAND2 (prtrm[0..2]);
+Prtrm3g		:= NAND2 (resL[0], prtrm[2..3]);
+Prtrm4g		:= NAND3 (res[0], trm2, trm3, prtrm[4]);
+Preq		:= NAND2 (prtrm[3], prtrm[4], preq);
+Prne		:= INV1 (preq, prne);
+
+(* Priority Greater Than
+   This is active when the priority of the destination pixel is a higher
+   value than the priority of the source pixel.  This is given by:
+   prgt = 	/res[0].( dam1.dd[7]./sd[7]
+		       + /dam1.dd[3]./sd[3])
+               + res[0].( dd[7]./sd[7]
+		       + dd[6]./sd[7]./sd[6]
+		       + dd[6].dd[7]./sd[6]
+ *)
+
+Prgt0		:= NAND3 (dam1, dd[7], sdL[7], prgtt[0]);
+Prgt1		:= NAND3 (dam1L, dd[3], sdL[3], prgtt[1]);
+Prgt2		:= NAND2 (prgtt[0..2]);
+Prgt3		:= NAND2 (resL[0], prgtt[2..3]);
+
+Prgt4		:= NAND2 (dd[7], sdL[7], prgtt[4]);
+Prgt5		:= NAND3 (dd[6], sdL[7], sdL[6], prgtt[5]);
+Prgt6		:= NAND3 (dd[6], dd[7], sdL[6], prgtt[6]);
+Prgt7		:= NAND3 (prgtt[4..7]);
+Prgt8		:= NAND2 (res[0], prgtt[7..8]);
+
+Prgt		:= NAND2 (prgtt[3], prgtt[8], prgt);
+
+(* From these,  generate the inhibit signal *)
+
+Inht0g		:= NAND3 (cmppln, cmpgt, prgt, inht[0]);
+Inht1g		:= NAND3 (cmppln, cmpeq, preq, inht[1]);
+Inht2g		:= NAND3 (cmppln, cmpne, prne, inht[2]);
+Inht3g		:= NAND3 (cmpplnL, cmpeq, beq, inht[3]);
+Inht4g		:= NAND3 (cmpplnL, cmpne, beqL, inht[4]);
+Inht5g		:= NAND2 (cmpbit, bit, inht[5]);
+Inhgen		:= NAND6 (inht[0..5], inhib);
+
+END

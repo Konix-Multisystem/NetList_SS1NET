@@ -1,0 +1,41 @@
+(****************************************************************************
+srcdata.hdl
+10/10/88
+
+Source Data Register
+
+This register holds the data read during the source data read cycle of the 
+inner loop.  Provision is made to swap the low and high nybbles of the
+low byte in hires mode if necessary.
+
+When the source data register is loaded with pattern data it is necessary to
+load the high byte of the register from the low byte of the data bus.  This
+is given by the signal srcltoh.
+
+****************************************************************************)
+
+IMPORT gates, latches, macros;
+
+DEF SRCDATA (id[0..15], ldsrcL, srcltoh , sswap:IN; srcd[0..15] :IO);                
+
+sdi[8..15], sdint[0..7], sdintL[0..7], srcdL[8..15], srcltohL, sswapL :IO;
+
+BEGIN
+
+(* Multiplex the low and high bytes of the data bus *)
+
+SrcltohL	:= N1B (srcltoh, srcltohL);
+Sdi[8-15]	:= AOI (srcltoh, id[0-7], srcltohL, id[8-15], sdi[8-15]);
+
+(* The source data latch *)
+
+Srcdl[0-7]	:= LD2A (id[0-7], ldsrcL, sdint[0-7], sdintL[0-7]);
+Srcdl[8-15]	:= LD2A (sdi[8-15], ldsrcL, srcdL[8-15], srcd[8-15]);
+
+(* The 4-bit pixel nybble swapper *)
+
+Sswpinv		:= N1B (sswap, sswapL);
+Srcmux[0-3]	:= AOI (sswap, sdintL[4-7], sswapL, sdintL[0-3], srcd[0-3]);
+Srcmux[4-7]	:= AOI (sswap, sdintL[0-3], sswapL, sdintL[4-7], srcd[4-7]);
+
+END

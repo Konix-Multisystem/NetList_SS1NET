@@ -1,0 +1,114 @@
+(****************************************************************************
+stcmd
+15/10/88
+
+Blitter command read state machine
+
+Note - that irc[4] is brought out as the command read cycle request, comcrq
+
+****************************************************************************)
+
+IMPORT gates, latches;
+
+DEF STCMD (cclk, cycend, icycend, rdcmd, reset, run, sreset  :IN;
+	ldsaL[0..2], lddaL[0..2], ldcmpL, ldoutL, ldmodL, comdn, irc[4], 
+	ldcmdL :IO);
+
+cmdendL, cntclr, cntdis, cnten, cntinL[0..3], cycendL, irc[0..3], 
+irc[5], irct[1..3], ildcmdL, ildsaL[0..2], ilddaL[0..2], lddat[0..2], 
+lddatL[0..2], ildcmpL, ldcmpt, ldcmptL, ildoutL, ldoutt, ldouttL, 
+ildmodL, ldmodt, ldmodtL, ldcmdt, ldcmdtL, ldsat[0..2], ldsatL[0..2], 
+rc[0..5], rcL[0..5], rc4t[0..3], rc5t[0..2], rcc[1..2], rccL[1..2], 
+resetL, sresetL :IO;
+
+BEGIN
+
+(* Invert inputs as required *)
+
+CycendL		:= INV1 (cycend, cycendL);
+ResetL		:= INV1 (reset, resetL);
+SresetL		:= INV1 (sreset, sresetL);
+
+(* Generate the inputs for bits 4 and 5 *)
+
+Cmdegen		:= NAND4 (rc[3], rcL[2], rcL[1], rcL[0], cmdendL);
+
+Rc4t0gen	:= NAND3 (rcL[4..5], run, rc4t[0]);
+Rc4t1gen	:= NAND3 (rc[4], rcL[5], cmdendL, rc4t[1]);
+Rc4t2gen	:= NAND3 (rcL[4], rc[5], rdcmd, rc4t[2]);
+Rc4t3gen	:= NAND2 (rc[4], cycendL, rc4t[3]);
+Rc4gen		:= NAND4 (rc4t[0..3], irc[4]);
+
+Rc5t0gen	:= NAND2 (rcL[4], rc[5], rc5t[0]);
+Rc5t1gen	:= NAND3 (rc[4], rcL[5], comdn, rc5t[1]);
+Rc5t2gen	:= NAND3 (rc[4..5], cycendL, rc5t[2]);
+Rc5gen		:= NAND3 (rc5t[0..2], irc[5]);
+
+(* Generate the inputs for bits 0 to 3, the counter.
+This is cleared during the read command state, and allowed to count
+during the read operands state at the cycle end, e.g.
+Bit0 = /(rc[4] . rc[5]) . ((rc[4] . /rc[5] . cycend) . /rc[0]
+			  +(rc[4] . /rc[5] . /cycend) . rc[0])
+ *)
+
+Irc1gen		:= AOI (rc[0], rc[1], rcL[0], rcL[1], irct[1]);
+Crc1gen		:= NAND2 (rc[0], rc[1], rccL[1]);
+Crc2gen		:= NAND2 (rc[2], rcc[1], rccL[2]);
+Rcc1inv		:= INV1 (rccL[1], rcc[1]);
+Rcc2inv		:= INV1 (rccL[2], rcc[2]);
+Irc2gen		:= AOI (rc[2], rcc[1], rcL[2], rccL[1], irct[2]);
+Irc3gen		:= AOI (rc[3], rcc[2], rcL[3], rccL[2], irct[3]);
+(* The common count control terms *)
+Cntc[0]		:= NOR2 (rcL[4..5], cntclr);
+Cntc[1]		:= NOR3 (rcL[4], rc[5], cycendL, cnten);
+Cntc[2]		:= NOR3 (rcL[4], rc[5], cycend, cntdis);
+(* Generate the counter control bits *)
+CntinL[0]	:= AOI (cnten, rcL[0], cntdis, rc[0], cntinL[0]);
+CntinL[1-3]	:= AOI (cnten, irct[1-3], cntdis, rc[1-3], cntinL[1-3]);
+Irc[0-3]	:= NOR2 (cntclr, cntinL[0-3], irc[0-3]);
+
+(* The state latches *)
+
+Rclatch[0-5]	:= DTLATCH1C (irc[0-5], cclk, sresetL, rc[0-5], rcL[0-5]);
+
+(* Decodes from the state *)
+
+Comdgen		:= NOR2 (cmdendL, cycendL, comdn);
+
+(* Source address load *)
+
+Ldsa0t		:= NAND6 (rcL[0..3], rc[4], icycend, ildsaL[0]);
+Ldsa1t		:= NAND5 (rc[0], rcL[1], rcL[2], rcL[3], icycend, ildsaL[1]);
+Ldsa2t		:= NAND5 (rcL[0], rc[1], rcL[2], rcL[3], icycend, ildsaL[2]);
+Ldsalt[0-2]	:= DTLATCH1P (ildsaL[0-2], cclk, resetL, 
+			ldsatL[0-2], ldsat[0-2]);
+Ldsa[0-2]	:= NOR2 (ldsat[0-2], reset, ldsaL[0-2]);
+
+(* Destination address load *)
+
+Ldda0t		:= NAND5 (rc[0], rc[1], rcL[2], rcL[3], icycend, ilddaL[0]);
+Ldda1t		:= NAND4 (rcL[0], rcL[1], rc[2], icycend, ilddaL[1]);
+Ldda2t		:= NAND4 (rc[0], rcL[1], rc[2], icycend, ilddaL[2]);
+Lddal[0-2]	:= DTLATCH1P (ilddaL[0-2], cclk, resetL, 
+			lddatL[0-2], lddat[0-2]);
+Ldda[0-2]	:= NOR2 (lddat[0-2], reset, lddaL[0-2]);
+
+(* Other load signals *)
+
+Ldcmdgen	:= NAND3 (rc[4], rc[5], icycend, ildcmdL);
+Ldcmdl		:= DTLATCH1P (ildcmdL, cclk, resetL, ldcmdtL, ldcmdt);
+Ldcmdg		:= NOR2 (reset, ldcmdt, ldcmdL);
+
+Ldmodgen	:= NAND4 (rcL[0], rc[1..2], icycend, ildmodL);
+Ldmodl		:= DTLATCH1P (ildmodL, cclk, resetL, ldmodtL, ldmodt);
+Ldmodg		:= NOR2 (ldmodt, reset, ldmodL);
+
+Ldcmpgen	:= NAND4 (rc[0..2], icycend, ildcmpL);
+Ldcmpl		:= DTLATCH1P (ildcmpL, cclk, resetL, ldcmptL, ldcmpt);
+Ldcmpg		:= NOR2 (reset, ldcmpt, ldcmpL);
+
+Ldoutgen	:= NAND3 (rcL[0], rc[3], icycend, ildoutL);
+Ldoutl		:= DTLATCH1P (ildoutL, cclk, resetL, ldouttL, ldoutt);
+Ldoutg		:= NOR2 (reset, ldoutt, ldoutL);
+
+END

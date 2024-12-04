@@ -1,0 +1,83 @@
+(***************************************************************************
+state
+15/10/88
+
+Blitter state machines
+
+This section contains the state machines, counters, command registers and
+general control logic for the blitter.
+
+****************************************************************************)
+
+IMPORT stouter, stcmd, stparam, stinner, stmem, cmdregs, outercnt, innercnt;
+
+DEF STATE (ackint, borrow, cclk, cmdwrL, conwrL, dam1L, id[0..7], 
+	incrdL, inhib, outcrdL, reset, sam1L, strd, waitL :IN;
+	addbackL, addbldL, adstp, datoeL, 
+	icnt[0..2], incycL, ldcmpL, lddaL[0..2], lddstL, ldmodL, ldpatL, 
+	ldsaL[0..2], ldsrcL, ldstpL, lindr, pcen, res[0..1], run, sdasel, 
+	srcenf, srcltoh, srcrd, sswap, stop, upddstL, updpcL, updsrcL, 
+	upsldL, bmreq, brd, bwr, bword  :IO;
+	d[0..7] :TRI);
+ 
+comcrq, colst, comdn, cycend, cycst, dsten, dstup, dstwr, icnt[3..8], 
+idstwr, incrq, icycend, icycst, ldinrL, ildpatL, ldcmdL, iquiet, parrd, 
+inlp, ldicntL, rdcmd, iupddstL, iupdsrcL, ldoutL, inclkL, inner0, 
+otclkL, outer0L, parcrq, pardn, rdpar, resume, srcen, srcup, sreset :IO;
+
+BEGIN
+
+(* Outer loop state machine *)
+
+Stouter		:= STOUTER (comdn, dstup, iquiet, outer0L,
+			pardn, parrd, sreset, srcup, cclk, 
+			adstp, inlp, ldicntL, rdcmd, rdpar, sdasel, otclkL, 
+			iupddstL, iupdsrcL);
+ 
+(* Command read state machine *)
+
+Stcmd		:= STCMD (cclk, cycend, icycend, rdcmd, reset, 
+			run, sreset, ldsaL[0..2], lddaL[0..2], ldcmpL, 
+			ldoutL, ldmodL, comdn, comcrq, ldcmdL);
+ 
+(* Parameter read state machine *)
+
+Stparam		:= STPARAM (cycend, icycend, sreset, cclk, rdpar, 
+			parcrq, pardn, ldinrL, ldpatL, ldstpL, ildpatL);
+
+(* Inner loop state machine *) 
+ 
+Stinner		:= STINNER (borrow, cclk, colst, cycend, cycst, 
+			dam1L, dsten, icycend, icycst, ildpatL, 
+			inhib, inlp, inner0, iupddstL, iupdsrcL, lindr, 
+			res[0], reset, resume, sam1L, srcen, srcenf, 
+			sreset, addbackL, addbldL, dstwr, idstwr, inclkL, 
+			incrq, iquiet, lddstL, ldsrcL, srcltoh, srcrd, 
+			sswap, stop, upddstL, updsrcL, upsldL);
+
+(* Memory interface state machine *)
+
+Stmem		:= STMEM (ackint, cclk, comcrq, idstwr, 
+			incrq, inhib, parcrq, reset, res[0..1], waitL, cycend, 
+			cycst, datoeL, icycend, icycst, incycL, pcen, 
+			updpcL, bmreq, brd, bwr, bword);
+ 
+(* State machine command registers *)
+
+Cmdregs		:= CMDREGS (cclk, cmdwrL, conwrL, icnt[8], id[0..7], ldmodL, 
+			ldcmdL, reset, stop, strd, colst, dsten, dstup, 
+			lindr, parrd, res[0..1], resume, run, srcen, 
+			srcenf, srcup, sreset, d[1..2]);
+
+(* Inner loop length counter *)
+
+Innercnt	:= INNERCNT (cclk, id[0..7], ldinrL, ldmodL, ldicntL, inclkL, 
+			reset, inner0, icnt[0..8]);
+ 
+(* Outer loop length counter *)
+
+Outercnt	:= OUTERCNT (cclk, icnt[0..7], id[0..7], incrdL, ldoutL, 
+			otclkL, outcrdL, reset, outer0L, d[0..7]);
+ 
+END
+

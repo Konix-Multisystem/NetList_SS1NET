@@ -1,0 +1,66 @@
+(****************************************************************************
+dstareg
+19/10/88
+
+Destination Address Register
+
+This register is loaded either when the blitter program is being loaded, this
+is given by lddaL[0..2], or when an updated address has been computed, given 
+by upddstL.  The updated address may be computed by the adder or given by
+addq[0..9].
+
+****************************************************************************)
+
+IMPORT latches, macros;
+
+DEF DSTAREG (addq[0..19], addqm1, dstrdL[0..2], id[0..7], lddaL[0..2], 
+	sdasel, upddstL :IN;
+	daL[0..19], dam1L, dstcmp, dsign, dwrap :IO;
+	d[0..7] :TRI);
+
+daren, da[0..19], dam1, dar[0..7], das[0..7], di[0..19], dim1, 
+dldL[0..2], dstcmpL, dstrd[0..2], dwrapL, dsignL, sdaselL  :IO;
+
+BEGIN
+
+(* Invert inputs to taste *)
+
+SdaselL		:= N1C (sdasel, sdaselL);
+
+(* The load enables for the latches *)
+
+Dld[0-2]	:= AND2 (lddaL[0-2], upddstL, dldL[0-2]);
+
+(* Mltiplex between input data and adder output  *)
+
+Muxm1		:= AOI (sdaselL, id[7], sdasel, addqm1, dim1);
+Mux[0-7]	:= AOI (sdaselL, id[0-7], sdasel, addq[0-7], di[0-7]);
+Mux[8-15]	:= AOI (sdaselL, id[0-7], sdasel, addq[8-15], di[8-15]);
+Mux[16-19]	:= AOI (sdaselL, id[0-3], sdasel, addq[16-19], di[16-19]);
+
+(* The address latches *)
+
+Da[0-7]		:= DTLATCH1 (di[0-7], dldL[0], daL[0-7], da[0-7]);
+Da[8-15]	:= DTLATCH1 (di[8-15], dldL[1], daL[8-15], da[8-15]);
+Da[16-19]	:= DTLATCH1 (di[16-19], dldL[2], daL[16-19], da[16-19]);
+Dam1		:= DTLATCH1 (dim1, dldL[2], dam1L, dam1);
+
+(* The destination address update sign bit, and wrap control *)
+
+Dstcmp		:= LD2A (id[4], lddaL[2], dstcmp, dstcmpL);
+Dwrap		:= LD2A (id[5], lddaL[2], dwrap, dwrapL);
+Dsign		:= LD2A (id[6], lddaL[2], dsign, dsignL);
+
+(* Make it readable by the CPU *)
+
+Dioinv[0-2]	:= INV1 (dstrdL[0-2], dstrd[0-2]);
+Darsel1[0-7]	:= MUX2 (da[0-7], dstrd[0], da[8-15], dstrd[1], dar[0-7]);
+Darsel2[0-3]	:= AOI (da[16-19], dstrd[2], dar[0-3], dstrdL[2], das[0-3]);
+Darsel2[4-5]	:= NAND2 (dar[4-5], dstrdL[2], das[4-5]);
+Darsel2[6]	:= AOI (dsign, dstrd[2], dar[6], dstrdL[2], das[6]);
+Darsel2[7]	:= AOI (dam1, dstrd[2], dar[7], dstrdL[2], das[7]);
+
+Daren		:= NAND3 (dstrdL[0..2], daren);
+Daport[0-7]	:= ZINV1 (das[0-7], daren, d[0-7]);
+
+END

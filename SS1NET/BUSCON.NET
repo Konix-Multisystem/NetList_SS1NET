@@ -1,0 +1,135 @@
+COMPILE;
+DIRECTORY MASTER;
+/****************************************************************************
+buscon
+20/10/88
+
+Bus Control and IO decoding
+
+****************************************************************************/
+
+
+MODULE BUSCON;
+
+INPUTS	D_0,D_3,D_4,D_5,D_6,D_7,A_0,A_1,A_2,A_3,A_4,BCSL,HLDAL,DSPBRQL,ID_0,INTL,
+   IORDL,IOWRL,INCYCL,RESET,RUN,STOP;
+OUTPUTS	D_0,D_3,D_4,D_5,D_6,D_7,ACKINT,BHOLDL,BUSOE,CMDWRL,CONWRL,DSPBAKL,
+   DSTRDL_0,DSTRDL_1,DSTRDL_2,INCRDL,OUTCRDL,PCWRL_0,PCWRL_1,PCWRL_2,SRCRDL_0,
+   SRCRDL_1,SRCRDL_2,STRD,TESTWRL;
+LEVEL FUNCTION;
+DEFINE
+
+INCYCINV_(INCYC) = N1A(INCYCL);
+DSPBRQINV_(DSPBRQ) = N1A(DSPBRQL);
+RESETL_(RESETL) = N1A(RESET);
+STOPL_(STOPL) = N1A(STOP);
+
+/* Internal bus reques busreq occurs as soon as the run bit is set, and
+is disabled if the inner loop goes into its stop state */
+
+BUSREQL_(BUSREQL) = ND2A(RUN,STOPL);
+BUSREQ_(BUSREQ) = N1A(BUSREQL);
+
+/* Interrupts are filtered by the imask flag */
+
+FINT_(FINT) = NR2A(INTL,IMASK);
+FINTL_(FINTL) = N1A(FINT);
+
+/* CPU Bus Request */
+
+CBRQT_(CBRQT) = ND2A(FINTL,BUSREQ);
+CBRQGEN_(BHOLDL) = AND3A(DSPBRQL,INCYCL,CBRQT);
+
+/* DSP Bus Acknowledge */
+
+DBAGEN_(DSPBAK) = NR3A(DSPBRQL,HLDAL,INCYC);
+DSPBAKL_(DSPBAKL) = N1C(DSPBAK);
+
+/* Internal Acknowledge */
+
+IAKGEN_(ACKINT) = NR4A(DSPBRQ,HLDAL,FINT,BUSREQL);
+
+/* The address is enabled onto the bus whenever a hold acknowlwdge is
+received (even if not requested!), unless the DSP owns the bus.  This
+is given by:
+	busoe = hlda . /dspbak  */
+
+BUSOE_(BUSOE) = NR2C(HLDAL,DSPBAK);
+
+/* IO Decoding 
+Blitter IO is given by a chip select signal bcsL, and iordL and iowrL
+control lines.  The blitter has 32 IO locations available to it, not
+all of which are used.  So that there are no un-acknowledged locations,
+which would leave the bus undriven, the outer counter address decode
+is expanded to fill the available IO space. 
+	A43210
+	 00000	Destination byte 0 read / Program byte 0 write
+	 00001	Destination byte 1 read / Program byte 1 write
+	 00010	Destination byte 2 read / Program byte 2 write
+	 00011	Source byte 0 read / Command register write
+	 00100	Source byte 1 read / Control register write
+	 00101	Source byte 2 read
+	 00110	Status read
+	 00111	Inner counter read
+	 x1xxx }Outer counter read
+	 1xxxx }
+	 11111	Test mode register write (used at top level) 
+*/
+
+AINV_0_(AL_0) = N1B(A_0);
+AINV_1_(AL_1) = N1B(A_1);
+AINV_2_(AL_2) = N1B(A_2);
+AINV_3_(AL_3) = N1B(A_3);
+AINV_4_(AL_4) = N1B(A_4);
+BRD_(BRD) = NR2A(BCSL,IORDL);
+BWR_(BWR) = NR2C(BCSL,IOWRL);
+
+DSTRDL_0_(DSTRDL_0) = ND6A(AL_0,AL_1,AL_2,AL_3,AL_4,BRD);
+DSTRDL_1_(DSTRDL_1) = ND6A(A_0,AL_1,AL_2,AL_3,AL_4,BRD);
+DSTRDL_2_(DSTRDL_2) = ND6A(AL_0,A_1,AL_2,AL_3,AL_4,BRD);
+SRCRDL_0_(SRCRDL_0) = ND6A(A_0,A_1,AL_2,AL_3,AL_4,BRD);
+SRCRDL_1_(SRCRDL_1) = ND6A(AL_0,AL_1,A_2,AL_3,AL_4,BRD);
+SRCRDL_2_(SRCRDL_2) = ND6A(A_0,AL_1,A_2,AL_3,AL_4,BRD);
+STRDL_(STRDL) = ND6A(AL_0,A_1,A_2,AL_3,AL_4,BRD);
+INCRDL_(INCRDL) = ND6A(A_0,A_1,A_2,AL_3,AL_4,BRD);
+OUTCRDT_(OUTCRDT) = ND2A(AL_3,AL_4);
+OUTCRDL_(OUTCRDL) = ND2A(OUTCRDT,BRD);
+
+PCWRTL_0_(PCWRTL_0) = ND6A(AL_0,AL_1,AL_2,AL_3,A_4,BWR);
+PCWRTL_1_(PCWRTL_1) = ND6A(A_0,AL_1,AL_2,AL_3,A_4,BWR);
+PCWRTL_2_(PCWRTL_2) = ND6A(AL_0,A_1,AL_2,AL_3,A_4,BWR);
+PCWRL_0_(PCWRL_0) = AND2A(PCWRTL_0,RESETL);
+PCWRL_1_(PCWRL_1) = AND2A(PCWRTL_1,RESETL);
+PCWRL_2_(PCWRL_2) = AND2A(PCWRTL_2,RESETL);
+
+CMDWRL_(CMDWRL) = ND6C(A_0,A_1,AL_2,AL_3,A_4,BWR);
+CONWRTL_(CONWRTL) = ND6A(AL_0,AL_1,A_2,AL_3,A_4,BWR);
+CONWRL_(CONWRL) = AND2A(CONWRTL,RESETL);
+
+TESTWRTL_(TESTWRTL) = ND6A(A_0,A_1,A_2,A_3,A_4,BWR);
+TESTWRL_(TESTWRL) = AND2A(TESTWRTL,RESETL);
+
+/* The blitter status read port (part of) */
+
+STRD_(STRD) = N1A(STRDL);
+
+/* Interrupt stop is true if run is active, int is active and bus hold 
+is inactive */
+ISTOPL_(ISTOPL) = ND3A(RUN,FINT,BHOLDL);
+STAT_0_(D_0) = BTS5A(ISTOPL,STRD);
+
+STAT_3_(D_3) = BTS5A(STRD,STRD);
+STAT_4_(D_4) = BTS5A(STRD,STRD);
+STAT_5_(D_5) = BTS5A(STRD,STRD);
+STAT_6_(D_6) = BTS5A(STRD,STRD);
+STAT_7_(D_7) = BTS5A(STRD,STRD);
+
+/* The blitter control register.  The remainder of this register lies 
+within the state block */
+
+IMASK_(IMASK,IMASKL) = LD2A(ID_0,CONWRL);
+
+END MODULE;
+
+END COMPILE;
+END;

@@ -1,0 +1,37 @@
+(***************************************************************************
+data
+15/10/88
+
+Data path of blitter
+
+This section contains the data registers, logic function unit, and data
+comparator of the blitter.
+
+***************************************************************************)
+
+IMPORT srcdata, dstdata, patdata, comp, lfu;
+
+DEF DATA (dam1L, datoeL, dstcmp, icnt[0..2], id[0..15], ldcmpL, lddstL, 
+	ldpatL, ldmodL, ldsrcL, res[0], sswap, srccmp, srcltoh :IN;
+	inhib :IO;
+	d[0..15]:TRI);
+ 
+dstd[0..7], patd[0..7], srcd[0..15] :IO;
+
+BEGIN
+
+Srcdata		:= SRCDATA (id[0..15], ldsrcL, srcltoh, sswap, srcd[0..15]);
+
+Dstdata		:= DSTDATA (lddstL, id[0..7], dstd[0..7]);
+
+Patdata		:= PATDATA (ldpatL, id[0..7], patd[0..7]);
+
+Comp		:= COMP (dstcmp, id[0..3], ldcmpL, ldmodL, srcd[0..7], 
+			dstd[0..7], patd[0..7], icnt[0..2], dam1L, res[0], 
+			srccmp, inhib);          
+ 
+Lfu		:= LFU (dam1L, datoeL, dstd[0..7], id[4..7], ldcmpL, 
+			ldmodL, patd[0..7], res[0], srcd[0..15], d[0..15]);
+ 
+END
+

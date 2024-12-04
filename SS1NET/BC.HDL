@@ -1,0 +1,29 @@
+IMPORT blit;
+
+DEF BC ();
+    resetL, hldaL, dspbrqL, intL, iordL, iowrL, 
+    bcsL, cclk, waitL: IO;
+    bmreq, brd, bwr, bword, dspbakL, bholdL, testwrL: IO;
+    a[0..19], d[0..15]: TRI
+
+BEGIN
+
+  Blit := BLIT (
+    resetL, hldaL, dspbrqL, intL, iordL, iowrL, bcsL,
+    cclk, waitL, bmreq, brd, bwr, bword, dspbakL,
+    bholdL, testwrL, a[0..19], d[0..15]);
+
+  blittest := STIMULUS (
+    resetL, hldaL, dspbrqL, intL, iordL, iowrL, bcsL,
+    cclk, waitL, bmreq, brd, bwr, bword, dspbakL,
+    bholdL, a[0..19], d[0..15]);
+
+END;
+
+DEF STIMULUS (
+    resetL, hldaL, dspbrqL, intL, iordL, iowrL, 
+    bcsL, cclk, waitL: IO;
+    bmreq, brd, bwr, bword, dspbakL, bholdL: IN;
+    a[0..19], d[0..15]: BI);
+BEGIN
+END;

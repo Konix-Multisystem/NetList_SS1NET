@@ -1,0 +1,70 @@
+COMPILE;
+DIRECTORY MASTER;
+/********************************************************
+*	stat-hdl					*
+*	28/10/88					*
+********************************************************/
+
+/* 
+This module contains the status,diagnostic and lcd registers in 
+the SLIPSTREAM chip on the ACW
+*/
+
+
+
+MODULE STAT;
+
+INPUTS	D_0,D_1,D_2,D_3,D_4,D_5,D_6,D_7,RESETL_0,WD_0,WD_1,WD_2,WD_3,WD_4,STATL,
+   DIAGL_0,DIAG_1,LCD,LPSET,PALL,PSRAML,FASTL,XTALL;
+OUTPUTS	D_0,D_1,D_2,D_3,D_4,D_5,D_6,D_7,OPEN,NTSC,TESTENL,PSUEDO,VCEN,TMODE,
+   FAST,TSTCLK,MO,DOEN;
+LEVEL FUNCTION;
+DEFINE
+
+/* delay reset to enable pal,psram and fast inputs */
+
+CLK_(CLK) = N1A(XTALL);
+RESET_0_(RESET_0) = N1A(RESETL_0);
+RESETL_1_(RESET_1,RESETL_1) = FD4A(RESET_0,CLK,RESETL_0);
+TESTEN_(TESTEN,TESTENL) = FD4A(RESET_1,CLK,RESETL_0);
+
+/* latch the screen ram type and processor speed */
+
+PSUEDO_(STATIC,PSUEDO) = LD1A(PSRAML,RESET_0);
+FAST_(SLOW,FAST) = LD1A(FASTL,RESET_0);
+
+/* latch the television mode */
+/* NB this can also be written by the host */
+
+MODECLK_(MODECLK) = ND2A(RESETL_0,DIAGL_0);
+MODEL_(MODEL) = AO2A(RESET_1,PALL,TESTENL,WD_1);
+NTSC_(PAL,NTSC) = LD1A(MODEL,MODECLK);
+
+/* the other bits of the diagnostics register */
+
+OPEN_(OPEN,OPENL) = LD1A(WD_0,DIAG_1);
+VCEN_(VCEN,VCENL) = LD1A(WD_2,DIAG_1);
+TSTCLK_(TSTCLK,TSTCLKL) = FD2A(WD_3,DIAGL_0,RESETL_0);
+TMODE_(TMODE,TMODEL) = LD1A(WD_4,DIAG_1);
+
+/* the 'LCD' register */
+
+LCDD_(MO,MOL) = LD1A(WD_0,LCD);
+DOEN_(DOEN,DOENL) = LD1A(WD_1,LCD);
+
+/* the status register */
+
+D_0_(D_0) = MACZINVB1(PAL,STATL);
+LPSETL_(LPSETL) = N1A(LPSET);
+D_1_(D_1) = MACZINVB1(LPSETL,STATL);
+D_2_(D_2) = MACZINVB1(SLOW,STATL);
+D_3_(D_3) = MACZINVB1(RESETL_1,STATL);
+D_4_(D_4) = MACZINVB1(RESETL_1,STATL);
+D_5_(D_5) = MACZINVB1(RESETL_1,STATL);
+D_6_(D_6) = MACZINVB1(RESETL_1,STATL);
+D_7_(D_7) = MACZINVB1(RESETL_1,STATL);
+
+
+END MODULE;
+END COMPILE;
+END;

@@ -1,0 +1,255 @@
+(****************************************************************************
+addbsel
+10/10/88
+
+Address adder input B control mechanism
+
+A variety of values may be added to an address.  These are 1/2, 1, 2, the 
+value of the step register or the 2's complement of all these values.
+
+These values are given by:
+
+updpc  res10  lindr  adstp  ssign  dsign  updsrc borrow yfrac  srcenf 
+1      xx     x      x      x      x      x      x      x      x      +1
+
+0      xx     x      0      0      x      1      x      x      1      +1
+0      xx     x      0      1      x      1      x      x      1      -1
+
+0      00     0      0      x      0      1      x      x      0      +1/2
+0      01     0      0      x      0      1      x      x      x      +1
+0      10     0      0      x      0      1      x      x      0      +1/2
+0      11     0      0      x      0      1      x      x      0      +2
+0      00     0      0      x      1      1      x      x      0      -1/2
+0      01     0      0      x      1      1      x      x      x      -1
+0      10     0      0      x      1      1      x      x      0      -1/2
+0      11     0      0      x      1      1      x      x      0      -2
+0      xx     0      1      x      0      1      x      x      x      +step
+0      xx     0      1      x      1      1      x      x      x      -step
+
+0      00     0      0      0      x      0      x      x      x      +1/2
+0      01     0      0      0      x      0      x      x      x      +1
+0      10     0      0      0      x      0      x      x      x      +1/2
+0      11     0      0      0      x      0      x      x      x      +2
+0      00     0      0      1      x      0      x      x      x      -1/2
+0      01     0      0      1      x      0      x      x      x      -1
+0      10     0      0      1      x      0      x      x      x      -1/2
+0      11     0      0      1      x      0      x      x      x      -2
+0      xx     0      1      0      x      0      x      x      x      +step
+0      xx     0      1      1      x      0      x      x      x      -step
+                                                                   X       Y
+0      xx     1      x      x      x      1      x      x      x      -step 
+0      xx     1      x      x      x      0      0      0      x   0
+0      x0     1      x      0      x      0      0      1      x   +1/2
+0      x0     1      x      0      x      0      1      x      x   +1/2
+0      x0     1      x      1      x      0      0      1      x   -1/2
+0      x0     1      x      1      x      0      1      x      x   -1/2
+0      01     1      x      0      x      0      0      1      x   +1
+0      01     1      x      0      x      0      1      x      x   +1
+0      01     1      x      1      x      0      0      1      x   -1
+0      01     1      x      1      x      0      1      x      x   -1
+
+0      xx     1      x      x      x      0      0      1      x           0
+0      xx     1      x      x      0      0      0      0      x           +1
+0      xx     1      x      x      0      0      1      x      x           +1
+0      xx     1      x      x      1      0      0      0      x           -1
+0      xx     1      x      x      1      0      1      x      x           -1
+
+NOTE that in line draw mode the division between X and Y is normally
+between bits 7 and 8, however in lores (00) it is between bits 6 and 7.
+
+The one omission from this compared to the old blitter is the removal of
+the addback cycle, which is performed locally by the source address
+register, so that two-tick line-draw computations may be made.
+
+****************************************************************************)
+
+IMPORT gates, latches, macros;
+
+DEF ADDBSEL(adstp, carryout, srcenf, dsign, dwrap, lindr, res[0..1],
+	step[0..7], stepm1, ssign, swrap, updpcL, updsrcL, yfrac:IN;
+	addbm1, addb[0..8], borrow, carryin[0..1], cinh6, cinh7, cinh15, 
+	hisign, vhisign :IO);
+
+abm1t[0..2], ab0t[0..2], ab1t[0..1], ab7t[0..2], ab8t, adstpL, 
+borrowL, ci15t, dsignL, 
+fone, foneL, fonet, fstept[0..1], fstep, fzero, hiinv, hisignL, 
+invsel[0..1], inv1t[0..5], 
+lhinv, lhinvL, lhit[0..2], lindrL, loinv, loit[0..1], 
+lores, loresL, resL[0..1], 
+uaddbm1, uaddb[0..8], updsrc, updpc, yfracL :IO;
+
+BEGIN
+
+(* Provide inverted versions of control signals *)
+
+AdstpL		:= INV1 (adstp, adstpL);
+DsignL		:= INV1 (dsign, dsignL);
+LindrL		:= INV1 (lindr, lindrL);
+Resinv[0-1]	:= INV1 (res[0-1], resL[0-1]);
+Updsrc		:= INV1 (updsrcL, updsrc);
+Updpc		:= INV1 (updpcL, updpc);
+YfracL		:= INV1 (yfrac, yfracL);
+
+(* Generate lores term *)
+Lores		:= NOR2 (res[0..1], lores);
+LoresL		:= INV1 (lores, loresL);
+
+(* Borrow is given by latching carryout on the end of updsrc *)
+Borrow		:= LD2A (carryout, updsrcL, borrowL, borrow);
+
+(* Outside line draw, one is added except when adstp is true.  The bit
+   position is normally given by the screen mode, but is overriden
+   always by updpc, and when /updpc . /adstp . updsrc . srcenf is true.
+   In line draw mode, 1 is added except when updsrc is true (then its
+   step) or when /yfrac . /borrow is true.
+*)
+
+(* This term overrides the screen mode setting and forces one *)	
+Fot[0]		:= NAND4 (updpcL, adstpL, updsrc, srcenf, fonet);
+Fot[1]		:= ND2B (updpcL, fonet, fone);
+FoneL		:= N1B (fone, foneL);
+(* This term forces zero *)
+Fzt[0]		:= NOR3 (lindrL, yfrac, borrow, fzero);
+(* This term means the step is added *)
+Fst[0]		:= NAND2 (lindrL, adstp, fstept[0]);
+Fst[1]		:= NAND2 (lindr, updsrc, fstept[1]);
+Fst[2]		:= ND2B (fstept[0..1], fstep);
+
+(* Produce unsigned bit -1
+   This is fstep . stepm1
+          +/(fone + fzero + fstep) . /res[0] *)
+
+Abm1t[0]	:= NAND2 (fstep, stepm1, abm1t[0]);
+Abm1t[1]	:= NOR3 (fone, fzero, fstep, abm1t[1]);
+Abm1t[2]	:= NAND2 (resL[0], abm1t[1..2]);
+Abm1t[3]	:= NAND2 (abm1t[0], abm1t[2], uaddbm1);
+
+(* Produce unsigned bit 0
+   This is fstep . step[0]
+	  +fone
+	  +/(fzero + fstep) . /res[1] . res[0] *)
+
+Ab0t[0]		:= NAND2 (fstep, step[0], ab0t[0]);
+Ab0t[1]		:= NOR2 (fzero, fstep, ab0t[1]);
+Ab0t[2]		:= NAND3 (resL[1], res[0], ab0t[1..2]);
+Ab0t[3]		:= NAND3 (ab0t[0], foneL, ab0t[2], uaddb[0]);
+
+(* Produce unsigned bit 1
+   This is fstep . step[1]
+          +/(fone + fzero + fstep) . res[1] . res[0] *)
+
+Ab1t[0]		:= NAND2 (fstep, step[1], ab1t[0]);
+Ab1t[1]		:= NAND3 (abm1t[1], res[0..1], ab1t[1]);
+Ab1t[2]		:= NAND2 (ab1t[0..1], uaddb[1]);
+
+(* Produce unsigned bits 2 - 6
+   These are fstep . step[n] *)
+
+Uaddb[2-6]	:= AND2 (fstep, step[2-6], uaddb[2-6]);
+
+(* Produce unsigned bit 7
+   This takes the value of the Y increment in lores mode.
+   This is fstep . step [7]
+          +/updpc . lindr . /updsrc . (borrow + /yfrac) . /res[1] . /res[0] *)
+
+Ab7t[0]		:= NAND2 (fstep, step[7], ab7t[0]);
+Ab7t[1]		:= NAND2 (borrowL, yfrac, ab7t[1]);
+Ab7t[2]		:= NAND6 (updpcL, lindr, updsrcL, ab7t[1], resL[0..1], 
+			ab7t[2]);
+Ab7t[3]		:= NAND2 (ab7t[0], ab7t[2], uaddb[7]);
+
+(* Produce unsigned bit 8
+   This takes the Y increment in all but lores mode
+   This is /updpc . lindr . /updsrc . (borrow + /yfrac) . (res[0] + res[1]) *)
+
+Ab8t[0]		:= NAND2 (resL[0..1], ab8t);
+Ab8t[1]		:= AND5 (updpcL, lindr, updsrcL, ab7t[1], ab8t, uaddb[8]);
+
+
+(* Having generated the unsigned value to be added, this needs the be
+   complemented under certain circumstances.  This is performed by
+   inverting the bits and injecting carry in to the adder.  In line
+   draw destination update mode this inversion may only occur on
+   half the bus if the source and destination signs are different.
+   In line draw source update bits 8 upwards must not be changed.
+*)
+
+(* Outside line draw, the value is complemented for the condition
+	/updpc . /lindr . ((updsrc . ssign) + (/updsrc . dsign)) *)
+
+Lhit[0]		:= NAND2 (updsrc, ssign, lhit[0]);
+Lhit[1]		:= NAND2 (updsrcL, dsign, lhit[1]);
+Lhit[2]		:= NAND2 (lhit[0..2]);
+Lhit[3]		:= NAND3 (updpcL, lindrL, lhit[2], lhinvL);
+Lhinv		:= INV1 (lhinvL, lhinv);
+
+(* The low part is inverted for a line draw destination update by
+	/updpc . lindr . /updsrc . ssign
+   and is always complemented on the updsrc cycle
+        /updpc . lindr . updsrc *)
+
+Loit[0]		:= NAND4 (updpcL, lindr, updsrcL, ssign, loit[0]);
+Loit[1]		:= NAND3 (updpcL, lindr, updsrc, loit[1]);
+Loit[2]		:= NAND2 (loit[0..1], loinv);
+
+(* The high part is inverted for
+	/updpc . lindr . /updsrc . dsign *)
+Hiinv		:= NOR4 (updpc, lindrL, updsrc, dsignL, hiinv);
+
+(* Bits -1 and 0-6 are inverted on lhinv + loinv *)
+Invsel[0]	:= OR2 (lhinv, loinv, invsel[0]);
+
+(* Bit 7 is in the low or high half in line draw destination updates, 
+   depending on the screen mode:
+	  lindr . ((updsrc + /updsrc./lores) . loinv
+                  +/updsrc . lores . hiinv)
+	+ lhinv *)
+Inv1t[0]	:= NAND2 (updsrcL, loresL, inv1t[0]);
+Inv1t[1]	:= NAND2 (updsrcL, inv1t[0..1]);
+Inv1t[2]	:= NAND2 (loinv, inv1t[1..2]);
+Inv1t[3]	:= NAND3 (updsrcL, lores, hiinv, inv1t[3]);
+Inv1t[4]	:= NAND2 (inv1t[2..4]);
+Inv1t[5]	:= NAND2 (lindr, inv1t[4..5]);
+Inv1t[6]	:= NAND2 (lhinvL, inv1t[5], invsel[1]);
+
+(* Bit 8 is inverted on lhinv + hinv, and this gives the value used
+to add to bits 9-15 *)
+Invsel[2]	:= NR2B (lhinv, hiinv, hisignL);
+Hisinv		:= N1C (hisignL, hisign);
+
+(* If the source or destination wrap bits are set, then the sign should
+not propagate above bit 15 for the corresponding updates.  This is also
+used to inhibit carry from bit 15 to 16 
+This is /updpc . (updsrc.swrap + /updsrc.dwrap *)
+Ci15t[0]	:= AOI (updsrc, swrap, updsrcL, dwrap, ci15t);
+Cinh15		:= NOR2 (updpc, ci15t, cinh15);
+Vhisign		:= NR2B (hisignL, cinh15, vhisign);
+
+(* Carry is inhibited from bits 6-7 in the adder for a line-draw lores
+   destination update *)
+
+Cinh6		:= NOR4 (updpc, lindrL, updsrc, loresL, cinh6);
+
+(* Carry is inhibited from bits 7-8 in the adder for all other line draw
+   computations *)
+
+Cinh7		:= NOR3 (updpc, lindrL, cinh6, cinh7);
+
+(* Invert the bits as defined above *)
+
+Abinvm1		:= XOR2 (uaddbm1, invsel[0], addbm1);
+Abinv[0-6]	:= XOR2 (uaddb[0-6], invsel[0], addb[0-6]);
+Abinv[7]	:= XOR2 (uaddb[7], invsel[1], addb[7]);
+Abinv[8]	:= XOR2 (uaddb[8], hisign, addb[8]);
+
+(* The carry in to the bottom of the adder is given by loinv + lhinv *)
+
+Carryin[0]	:= OR2 (loinv, lhinv, carryin[0]);
+
+(* The carry in to the middle bits of the adder is given by hiinv, this 
+   will be multiplexed with the carry chain when the carry inhibit bits are
+   set *)
+
+Carryin[1]	:= BUF1 (hiinv, carryin[1]);
+
+END

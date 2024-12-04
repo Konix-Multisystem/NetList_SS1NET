@@ -1,0 +1,57 @@
+(****************************************************************************
+innercnt
+15/10/88
+
+Blitter operation inner loop length counter
+
+This a a synchronous down counter, with a register containing the programmed
+value so that the counter could be reloaded.
+
+****************************************************************************)
+
+IMPORT gates, latches, macros;
+
+DEF INNERCNT (cclk, id[0..7], ldinrL, ldmodL, ldicntL, inclkL, reset :IN; 
+	inner0, icnt[0..8] :IO);
+
+carry[0..8], cclkL, ldicnt, icval[0..8], icvalL[0..8], icntL[0..8], iclkL, 
+inner0L, in0t, ldiclkL, ldicntd, ldicntdL, resetL :IO;
+
+BEGIN
+
+CclkL		:= INV1 (cclk, cclkL);
+ResetL		:= INV1 (reset, resetL);
+
+(* The Inner count value register *)
+
+Icntr[0-7]	:= LD2A (id[0-7], ldinrL, icval[0-7], icvalL[0-7]);
+Icntr[8]	:= LD2A (id[1], ldmodL, icval[8], icvalL[8]);
+
+(* Inner counter load - as the inner counter is a synchronous counter
+loaded in one tick it is necessary to synthesize a load clock which will
+have a suitable rising edge within the load signal.  This is given by
+producing a delayed version off the back edge of the clock and making
+the clock active (low) only during the first half of the cycle *)
+
+Ldicntd		:= DTLATCH1 (ldicntL, cclkL, ldicntdL, ldicntd);
+Ldiclk		:= OR2 (ldicntL, ldicntd, ldiclkL);
+
+(* From this, the counter clock *)
+
+IclkL		:= AND2 (inclkL, ldiclkL, iclkL);
+
+(* The Inner counter *)
+
+Ldiinv		:= INV1 (ldicntL, ldicnt);
+Icnt[0]		:= LSCNTEL (icval[0], ldicnt, ldicntL, iclkL, reset, resetL, 
+			icnt[0], icntL[0], carry[0]);
+Icnt[1-8]	:= LSCNTEL (icval[1-8], ldicnt, ldicntL, iclkL, carry[0-7], 
+			resetL, icnt[1-8], icntL[1-8], carry[1-8]);
+
+(* Generate Inner0 *)
+
+In0t		:= NOR2 (icnt[0..1], in0t);
+In0gen		:= NAND8 (in0t, icntL[2..8], inner0L);
+Inner0		:= INV1 (inner0L, inner0);
+
+END;

@@ -1,0 +1,84 @@
+(****************************************************************************
+srcareg
+15/10/88
+
+Source Address Register
+
+The register is loaded in byte chunks by ldsaL[0-2], or as a whole by
+upsldL.  The selection between input data and adder output is given by 
+sdasel.
+
+This register also contains the addback mechanism, which adds the contents
+of bits 16 and 8-15 to bits -1 and 0-7.  The signal addback is active for
+the cycle in which this occurs, and addbld is used to load the appropriate
+register bit.  This must only be active in the second half of the cycle as
+the source register may already have been loaded in the first half.
+
+****************************************************************************)
+
+IMPORT gates, latches, macros;
+
+DEF SRCAREG (addbackL, addbldL, addq[0..19], addqm1, id[0..7], ldsaL[0..2], 
+	sdasel, srcrdL[0..2], upsldL :IN; 
+	saL[0..19], sam1L, srccmp, ssign, swrap :IO;
+	d[0..7] :TRI);
+
+addback, addsel, carry[0..8], datsel, laq[0..7], laqm1, sam1, sa[0..19], 
+saren, sar[0..7], sas[0..7], sdaselL, si[0..19], sim1, sldL[0..2], sldm1L,
+srccmpL, srcrd[0..2], ssignL, swrapL :IO;
+
+BEGIN
+
+Addback		:= INV1 (addbackL, addback);
+
+(* The load enables for the latches *)
+
+Sldm1		:= AND3 (ldsaL[2], upsldL, addbldL, sldm1L);
+Sld[0]		:= AND3 (ldsaL[0], upsldL, addbldL, sldL[0]);
+Sld[1-2]        := AND2 (ldsaL[1-2], upsldL, sldL[1-2]);
+
+(* The local adder for add back *)
+
+Laddm1		:= HALFADD (sam1, sa[16], laqm1, carry[0]);
+Ladd[0-7]	:= FULLADD (sa[8-15], sa[0-7], carry[0-7], 
+			laq[0-7], carry[1-8]);
+
+(* Multiplex between the adder output and the data bus *)
+
+SdaselL		:= N1B (sdasel, sdaselL);
+Addsel		:= NOR2 (sdaselL, addback, addsel);
+Datsel		:= NOR2 (sdasel, addback, datsel);
+
+Smuxm1		:= AO11A (addback, laqm1, addsel, addqm1, datsel, id[7], sim1);
+Smux[0-7]	:= AO11A (addback, laq[0-7], addsel, addq[0-7], datsel, 
+			id[0-7],si[0-7]);
+Smux[8-15]	:= AOI (sdasel, addq[8-15], sdaselL, id[0-7],si[8-15]);
+Smux[16-19]	:= AOI (sdasel, addq[16-19], sdaselL, id[0-3],si[16-19]);
+
+(* The address register *)
+
+Salatchm1	:= DTLATCH1 (sim1, sldm1L, sam1L, sam1);
+Salatch[0-7]	:= DTLATCH1 (si[0-7], sldL[0], saL[0-7], sa[0-7]);
+Salatch[8-15]	:= DTLATCH1 (si[8-15], sldL[1], saL[8-15], sa[8-15]);
+Salatch[16-19]	:= DTLATCH1 (si[16-19], sldL[2], saL[16-19], sa[16-19]);
+
+(* The source data comparator select, source address update sign bit, and '
+wrap control *)
+
+Srccmp		:= LD2A (id[4], ldsaL[2], srccmp, srccmpL);
+Swrap		:= LD2A (id[5], ldsaL[2], swrap, swrapL);
+Ssign		:= LD2A (id[6], ldsaL[2], ssign, ssignL);
+
+(* Make it readable by the CPU *)
+ 
+Sioinv[0-2]     := INV1 (srcrdL[0-2], srcrd[0-2]);
+Sarsel1[0-7]    := MUX2 (sa[0-7], srcrd[0], sa[8-15], srcrd[1], sar[0-7]);
+Sarsel2[0-3]    := AOI (sa[16-19], srcrd[2], sar[0-3], srcrdL[2], sas[0-3]);
+Sarsel2[4-5]    := NAND2 (sar[4-5], srcrdL[2], sas[4-5]);
+Sarsel2[6]      := AOI (ssign, srcrd[2], sar[6], srcrdL[2], sas[6]);
+Sarsel2[7]      := AOI (sam1, srcrd[2], sar[7], srcrdL[2], sas[7]);
+ 
+Saren           := NAND3 (srcrdL[0..2], saren);
+Saport[0-7]     := ZINV1 (sas[0-7], saren, d[0-7]);
+ 
+END

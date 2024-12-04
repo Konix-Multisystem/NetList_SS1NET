@@ -1,0 +1,36 @@
+(****************************************************************************
+addrout
+19/10/88
+
+Blitter output address multiplexer
+
+Two signals, pcen and srcen enable program and source addresses for output.
+Pcen takes priority.
+
+****************************************************************************)
+
+IMPORT gates, macros;
+
+DEF ADDROUT (saL[0..19], daL[0..19], pcL[0..19], pcen, srcen, busoe :IN; 
+	a[0..19] :TRI);
+
+dstsel, srcenL, srcsel, aout[0..19] :IO;
+
+BEGIN
+
+(* Generate select *)
+
+Srceninv	:= INV1 (srcen, srcenL);
+Srcsel		:= NR2C (pcen, srcenL, srcsel);
+Dstsel		:= NR2C (pcen, srcen, dstsel);
+
+(* Select the output bits *)
+
+Aout[0-19]	:= AO11A (pcen, pcL[0-19], dstsel, daL[0-19], 
+			srcsel, saL[0-19], aout[0-19]);
+
+(* Enable the data onto the address bus *)
+
+Adriv[0-19]	:= ZBUF1 (aout[0-19], busoe, a[0-19]);
+
+END

@@ -1,0 +1,23 @@
+(****************************************************************************
+stepreg
+10/10/88
+
+Address update step value register
+
+****************************************************************************)
+
+IMPORT gates, latches, macros;
+
+DEF STEPREG(id[0..7], ldmodL, ldstpL :IN;
+	step[0..7], stepm1, yfrac:IO);
+
+stepL[0..7], stepm1L, yfracL :IO;
+
+BEGIN
+
+Stpdl[0-7]	:= LD2A (id[0-7], ldstpL, step[0-7], stepL[0-7]);
+Stpm1l		:= LD2A (id[0], ldmodL, stepm1, stepm1L);
+
+Yfrl		:= LD2A (id[4], ldmodL, yfrac, yfracL);
+
+END
